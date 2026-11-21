@@ -15,6 +15,8 @@ Open `index.html` in a browser, or enable **GitHub Pages** (Settings → Pages �
 
 The game detects the device and sets controls, quality and aim help to match.
 
+**Tune your aim:** set MODE to RANGE, play 12 targets, and follow the tip on the results screen.
+
 ## Art direction — "sun-baked tactical"
 Light, warm, muted world; dark enemies with one hostile red-orange accent. Colour = meaning (mint = you, red-orange = enemy, violet = storm, amber = armour, green = health). Hard surfaces crisp, organic shapes smooth, everything grounded with baked ambient occlusion. Full rules are at the top of `index.html`.
 
@@ -22,6 +24,7 @@ Light, warm, muted world; dark enemies with one hostile red-orange accent. Colou
 All scenery is one mesh with light and shadows baked at load · each enemy is 7 meshes · no real-time shadows · 30 FPS cap with auto resolution · fixed 1/60 s game logic · nothing allocated per frame. Turn on `FPS: ON` in the options to measure.
 
 ## Changelog
+- [1.2](docs/CHANGES_v1.2.md) — firing range with aim measurements and tuning tips, turn boost, tracking assist
 - [1.1](docs/CHANGES_v1.1.md) — phone/laptop detection, controller support, golden-hour graphics, 10/16 enemies, laser-sight marksman, line-of-sight culling
 - [1.0](docs/CHANGES_v1.0.md) — art direction, feedback/juice, armour plates, stats, live menu
 - [0.6](docs/CHANGES_v0.6.md) — human enemies with natural movement, realistic low-poly shapes
