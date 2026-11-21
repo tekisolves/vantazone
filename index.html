@@ -1051,7 +1051,7 @@ let mT=0,mF=0;
 function menuView(dt){mT+=dt;if(mF^=1)return;
  const a=mT*.08;cam.position.set(10+Math.cos(a)*10.5,2.6,10+Math.sin(a)*10.5);cam.lookAt(10,.3,10);VM.visible=false;
  if(cam.fov!==72){cam.fov=72;cam.updateProjectionMatrix()}
- for(const b of bots)if(b.hp>0){b.mv=0;animate(b,dt*2);b.G.visible=true;b.G.position.x=b.x;b.G.position.z=b.y}
+ for(const b of bots)if(b.hp>0){b.mv=0;(b.isModel?animateModel:animate)(b,dt*2);b.G.visible=true;b.G.position.x=b.x;b.G.position.z=b.y}
  CLOUDS.rotation.y+=dt*.008;
  R.render(scene,cam)}
 // Auto resolution, checked every 2 s: below 85% of the cap -> 0.1 lower (and that becomes the ceiling); at the cap twice -> 0.1 higher.
