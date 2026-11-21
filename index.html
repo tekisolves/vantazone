@@ -460,7 +460,7 @@ function prepKits(){A.kits=KIT_MODEL.map(km=>{
  root.updateMatrixWorld(true);_bx.setFromObject(root);const s0=.7/(_bx.max.y-_bx.min.y);root.scale.setScalar(s0);root.position.y=-_bx.min.y*s0;root.updateMatrixWorld(true);
  // hit spheres from the skeleton: head, chest, legs (so headshots land on the actual head)
  const by=n=>{let y=0;root.traverse(o=>{if(o.name===n)y=o.getWorldPosition(_v).y});return y};
- const hs=[[1,by('Head')+.045,.085],[0,by('Torso'),.14],[0,by('LowerLeg.L')+.05,.12]];
+ const ty=by('Torso'),hs=[[1,by('Head')+.05,.105],[0,ty,.14],[0,ty*.48,.12]];   // toon heads are big: generous head sphere
  // muzzle: the thin end of the gun's longest axis (in the gun's own space)
  let gun=null;root.traverse(o=>{if(o.name===km.gun)gun=o});const muz=muzzleOf(gun),gs=gun.getWorldScale(_v).x;
  return{root,clips:src.animations,hs,muz,gs,gun:km.gun,mats}})}
@@ -541,7 +541,7 @@ function animateDeath(b,dt){const t=(b.dt+=dt),k=Math.min(1,t/.25),f=Math.min(1,
 // ============================== 8. YOUR RIFLE (attached to the camera) ==============================
 const VM=new THREE.Group();cam.add(VM);
 function buildViewmodel(){const g=new Merger(),D=0x2b2f3a,DD=0x1b1f27,GLOVE=0x3a3530,SLEEVE=0x4a5240;
- if(A){g.add(A.props.ak,0xffffff,{p:[0,-.115,-.07],r:[0,-Math.PI/2,0],s:.3,smooth:true});flash.position.set(0,.005,-.3)}   // the real AK model (barrel forward)
+ if(A){g.add(A.props.ak,0xffffff,{p:[.005,-.085,-.08],r:[0,-Math.PI/2,0],s:.21,smooth:true});flash.position.set(0,.01,-.24)}   // the real AK model (barrel forward)
  else{
  g.add(cbox(.045,.06,.2,.008),D,{p:[0,0,-.02]});                          // receiver
  g.add(cbox(.03,.012,.2,.003),DD,{p:[0,.036,-.03]});                      // top rail
@@ -886,7 +886,7 @@ function update(dt){
   P.tgPrev=tgt;P.tgBear=tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):0;
   P.tg=tgt;
   if(tgt){slow*=STD()?.55:.4;if(af&&Math.abs(tda)<(STD()?.035:.05)&&td<(STD()?8:12))aim=true; // auto-fire: target dead-centre (range-capped in Standard)
-   if((look.id!==null||held.f||held.f2||pad.f)&&!(DESK&&!pad.on)){P.a+=tda*dt*(STD()?2.2:4)*(1-Math.min(1,Math.abs(look.dx)));P.pit+=(Math.atan2(.45-.6,td)-P.pit)*dt*2}}}
+   if((look.id!==null||held.f||held.f2||pad.f)&&!(DESK&&!pad.on)){P.a+=tda*dt*(STD()?2.2:4)*(1-Math.min(1,Math.abs(look.dx)));P.pit+=(Math.atan2((A?.38:.45)-.6,td)-P.pit)*dt*2}}}
  slow*=SENS[sens];                                // LOOK option: sensitivity
  // TURN BOOST: hold the look stick at the very edge and turning speeds up after a moment, so 180° turns are quick
  // while small movements near the centre stay precise.
