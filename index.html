@@ -85,6 +85,8 @@ body.desk .btn,body.desk #jb,body.desk #jk,body.desk #rb,body.desk #rk{display:n
 <div class="screen" id="rot"><h1 style="font-size:28px">ROTATE PHONE</h1><p>Play in landscape.</p></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script>
 /* ===================================================================================================
    VANTA ZONE 1.0  (what changed and why: CHANGES_v1.0.md)
@@ -217,9 +219,10 @@ class Merger{
   _mx.compose(_p.set(...(o.p||[0,0,0])),_q,typeof s=='number'?_s.set(s,s,s):_s.set(...s));
   g.applyMatrix4(_mx);
   if(!o.smooth)g.computeVertexNormals();                         // hard surface: each triangle gets its own normal (crisp facets)
-  const P=g.attributes.position,N=g.attributes.normal;_col.setHex(hex);if(o.k)_col.multiplyScalar(o.k);
-  for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),z=P.getZ(i),a=o.ao?o.ao(x,y,z):1;
-   this.pos.push(x,y,z);this.nor.push(N.getX(i),N.getY(i),N.getZ(i));this.col.push(_col.r*a,_col.g*a,_col.b*a)}
+  const P=g.attributes.position,N=g.attributes.normal,C=g.attributes.color;_col.setHex(hex);if(o.k)_col.multiplyScalar(o.k);
+  for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),z=P.getZ(i),a=o.ao?o.ao(x,y,z):1;   // models carry their own colours per vertex
+   this.pos.push(x,y,z);this.nor.push(N.getX(i),N.getY(i),N.getZ(i));
+   if(C)this.col.push(C.getX(i)*_col.r*a,C.getY(i)*_col.g*a,C.getZ(i)*_col.b*a);else this.col.push(_col.r*a,_col.g*a,_col.b*a)}
   if(o.shadow)castShadow(P);
   g.dispose();return this}
  // a limb or barrel: tapered cylinder from point a (radius r) to point b (radius o.r2)
@@ -249,8 +252,33 @@ function hull(p){p.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0
  for(let i=p.length-1;i>=0;i--){const q=p[i];while(hi.length>1&&cr(hi[hi.length-2],hi[hi.length-1],q)<=0)hi.pop();hi.push(q)}
  return lo.slice(0,-1).concat(hi.slice(0,-1))}
 
+// ============================== 4b. REAL 3D MODELS ==============================
+// Characters + most props: Quaternius "Toon Shooter Game Kit"; skyline buildings: Kenney "City Kit (Industrial)". Both CC0.
+// Props were pre-converted (tools/export_props.py) into ONE small binary with their colours baked in, so they join the
+// single scenery mesh and cost nothing extra per frame. Characters are animated GLB files.
+// If the files can't load (e.g. index.html opened straight from disk), A stays null and the hand-built shapes are used.
+let A=null;
+async function loadAssets(){
+ const ok=r=>{if(!r.ok)throw new Error('asset '+r.url);return r};
+ const [idx,bin]=await Promise.all([fetch('assets/props.json').then(ok).then(r=>r.json()),fetch('assets/props.bin').then(ok).then(r=>r.arrayBuffer())]);
+ const props={};
+ for(const k in idx){const e=idx[k],g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(bin,e.pos,e.v*3),3));
+  const n8=new Int8Array(bin,e.nor,e.v*3),n=new Float32Array(e.v*3);for(let i=0;i<n.length;i++)n[i]=n8[i]/127;
+  const c8=new Uint8Array(bin,e.col,e.v*3),c=new Float32Array(e.v*3);for(let i=0;i<c.length;i++)c[i]=c8[i]/255;
+  g.setAttribute('normal',new THREE.BufferAttribute(n,3));g.setAttribute('color',new THREE.BufferAttribute(c,3));
+  g.setIndex(new THREE.BufferAttribute(e.i32?new Uint32Array(bin,e.idx,e.i):new Uint16Array(bin,e.idx,e.i),1));g.userData.size=e.size;props[k]=g}
+ const loader=new THREE.GLTFLoader(),load=u=>new Promise((res,rej)=>loader.load(u,res,undefined,rej));
+ const [enemy,soldier,hazmat]=await Promise.all(['enemy','soldier','hazmat'].map(n=>load('assets/'+n+'.glb')));
+ return{props,chars:{enemy,soldier,hazmat}}}
+// place a prop in the scenery mesh: h = target height in tiles (or s = exact scale)
+function prop(name,x,z,o={}){const g=A.props[name],k=o.s||(o.h/g.userData.size[1]);
+ world.add(g,0xffffff,{p:[x,o.y||0,z],r:[0,o.ry||0,0],s:o.sx?[k*o.sx,k,k]:k,smooth:true,shadow:o.shadow!==false,ao:o.ao,k:o.k})}
+
 // ============================== 5. WORLD (all of it becomes one mesh) ==============================
-const world=new Merger();
+let world;
+function buildWorld(){   // runs once, after the models have loaded (or failed to)
+world=new Merger();
 world.add(new THREE.PlaneGeometry(300,300),GRASS,{p:[10,-.02,10],r:[-Math.PI/2,0,0]});        // grass
 world.add(new THREE.BoxGeometry(20,.1,20),SEAMC,{p:[10,-.05,10]});                          // dark base: shows as seams between slabs
 const SLAB=new THREE.PlaneGeometry(.97,.97);
@@ -283,7 +311,17 @@ function crates(x,y){ // two layers of four crates, slightly uneven like a real 
   world.add(CRATE,rnd()<.25?ARMY:WOOD,{p:[px,py,pz],r:[0,ry,0],k,shadow:true,ao:AO_BASE});
   for(const dy of[-.13,.13])world.add(STRAP,WOOD_DARK,{p:[px,py+dy,pz],r:[0,ry,0],k,ao:AO_BASE});
  }}
-for(let y=0;y<20;y++)for(let x=0;x<20;x++){const t=cell(x,y);if(t==1)concrete(x,y);else if(t==2)container(x,y);else if(t==3)crates(x,y)}
+// MODEL VERSIONS: real shipping containers (a 2-cell long one where two container cells sit side by side) and stacked crates
+function modelContainers(){const done=new Set();
+ for(let y=0;y<20;y++)for(let x=0;x<20;x++){const i=y*20+x;if(cell(x,y)!=2||done.has(i))continue;done.add(i);
+  if(cell(x+1,y)==2&&!done.has(i+1)){done.add(i+1);prop('container_long',x+1,y+.5,{s:1.96/4.36,ao:AO_BASE})}          // lying along x
+  else if(cell(x,y+1)==2&&!done.has(i+20)){done.add(i+20);prop('container_long',x+.5,y+1,{s:1.96/4.36,ry:Math.PI/2,ao:AO_BASE})} // along z
+  else prop('container_small',x+.5,y+.5,{s:.98/2.19,ry:rnd()<.5?0:Math.PI,ao:AO_BASE})}}
+function modelCrates(x,y){const s=.47/.79;
+ for(let layer=0;layer<2;layer++)for(let i=0;i<4;i++)
+  prop('crate',x+.5+(i&1?.24:-.24)+rr(-.012,.012),y+.5+(i&2?.24:-.24)+rr(-.012,.012),{s,y:layer*.47,ry:rr(-.08,.08)+(rnd()<.5?0:Math.PI/2),ao:AO_BASE,k:rr(.9,1.05)})}
+for(let y=0;y<20;y++)for(let x=0;x<20;x++){const t=cell(x,y);if(t==1)concrete(x,y);else if(t==2&&!A)container(x,y);else if(t==3)(A?modelCrates:crates)(x,y)}
+if(A)modelContainers();
 // FLOOR MARKINGS: dashed lane paint inside the outer wall, oil stains and cracks. They break up the big floor and help you read distance.
 // Flat, so they never block movement or bullets.
 const DASH=cbox(.7,.006,.06,.002),CRACK=cbox(.45,.005,.014,.002);
@@ -293,11 +331,12 @@ for(let i=0;i<40;i++){const x=rr(1.5,18.5),z=rr(1.5,18.5);if(isWall(Math.floor(x
  if(i<16)world.add(DISC,0x8d857a,{p:[x,.008,z],s:[rr(.15,.45),1,rr(.12,.3)],r:[0,rnd()*6,0],k:rr(.85,1),ao:AO_FLOOR});      // stains
  else world.add(CRACK,0x7d766c,{p:[x,.009,z],r:[0,rnd()*6,0],s:[rr(.6,1.4),1,1],ao:AO_FLOOR})}                               // cracks
 // ROOFTOP DETAIL: vents and AC units on containers give the skyline something to read.
-for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(cell(x,y)==2&&rnd()<.55){
+for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(!A&&cell(x,y)==2&&rnd()<.55){
  const h=CELL_H[2];world.add(cbox(.34,.14,.24,.02),0x8b8e93,{p:[x+.5+rr(-.15,.15),h+.07,y+.5+rr(-.15,.15)],r:[0,rnd()*2,0],shadow:true});
  if(rnd()<.5)world.add(cyl(.05,.05,.22,8),0x6f7277,{p:[x+.5+rr(-.3,.3),h+.11,y+.5+rr(-.3,.3)],smooth:true})}
 // FLOODLIGHT POLES on the outer wall: tall thin silhouettes against the sky, aimed at the middle.
 for(const[x,y]of[[0,0],[19,0],[0,19],[19,19],[10,0],[0,10],[19,10],[9,19]]){const h=wallH(x,y),cx=x+.5,cz=y+.5,ry=Math.atan2(10-cx,10-cz);
+ if(A){prop('streetlight',cx,cz,{h:2.6,y:h,ry:ry+Math.PI});continue}   // model street light on the wall, arm over the arena
  world.add(cyl(.035,.05,2.3,6),0x55585e,{p:[cx,h+1.15,cz],shadow:true,smooth:true});
  world.add(cbox(.34,.14,.2,.02),0x3d4046,{p:[cx,h+2.32,cz],r:[.5,ry,0],shadow:true});
  world.add(cbox(.28,.08,.02,.005),0xfff3d6,{p:[cx+Math.sin(ry)*.105,h+2.27,cz+Math.cos(ry)*.105],r:[.5,ry,0],k:1.7})}  // lamp face (bright)
@@ -309,7 +348,21 @@ function pine(x,z,s){world.add(TRUNK,BARK,{p:[x,.3*s,z],s:[.08*s,.6*s,.08*s],sha
 function leafy(x,z,s){world.add(TRUNK,BARK,{p:[x,.35*s,z],s:[.09*s,.7*s,.09*s],shadow:true,smooth:true,ao:AO_BASE});
  world.add(ico(1,1),LEAF[0],{p:[x,.95*s,z],s:[.55*s,.47*s,.55*s],r:[rnd()*6,rnd()*6,0],shadow:true,smooth:true});
  world.add(ico(1,1),LEAF[1],{p:[x+.18*s,1.2*s,z-.1*s],s:[.36*s,.32*s,.36*s],r:[rnd()*6,rnd()*6,0],shadow:true,smooth:true})}
-for(let i=0;i<48;i++){const[x,z]=outside(),s=rr(.9,1.7);(rnd()<.6?pine:leafy)(x,z,s)}
+if(A){
+ for(let i=0;i<44;i++){const[x,z]=outside();prop(['tree1','tree2','tree3','tree4'][rnd()*4|0],x,z,{h:rr(2.2,3.6),ry:rnd()*6,ao:AO_BASE})}
+ // SKYLINE: industrial buildings, a water tower and chimneys around the arena give it a place in the world
+ const B=['bld_a','bld_c','bld_e','bld_g','bld_j','bld_m','bld_p','bld_s'];
+ for(let i=0;i<22;i++){const a=i/22*6.283+rr(-.08,.08),r=rr(17,27),x=10+Math.cos(a)*r,z=10+Math.sin(a)*r;
+  prop(B[rnd()*B.length|0],x,z,{s:rr(3.2,4.6),ry:Math.atan2(10-x,10-z)+(rnd()<.5?0:Math.PI/2),k:rr(.9,1.05)})}
+ prop('water_tower',-9,4,{s:4});prop('chimney',27,-6,{s:5});prop('chimney',30,-3,{s:4});prop('tank_big',-8,24,{s:3.4});prop('watertank',22.5,15,{h:1.9})
+ // SMALL CLUTTER inside the arena (low and flat, so it never blocks you or bullets): pallets, papers, tyres, cones, boxes, against walls
+ for(let k=0,n=0;k<400&&n<34;k++){const x=1+rnd()*18|0,y=1+rnd()*18|0;if(isWall(x,y))continue;
+  const nb=[[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>isWall(x+a,y+b));if(!nb.length)continue;const[a,b]=nb[0];n++;
+  const px=x+.5+a*.3,pz=y+.5+b*.3,ry=rnd()*6;
+  const pick=['pallet','papers','tires','cone','boxes','papers'][rnd()*6|0];
+  if(pick==='papers')prop(pick,px,pz,{s:.4,y:.012,ry,shadow:false});                 // flat sheet: fixed size (it has no height)
+  else prop(pick,px,pz,{h:{pallet:.09,tires:.22,cone:.2,boxes:.24}[pick],ry,ao:AO_BASE})}
+}else for(let i=0;i<48;i++){const[x,z]=outside(),s=rr(.9,1.7);(rnd()<.6?pine:leafy)(x,z,s)}
 for(let i=0;i<40;i++){const[x,z]=outside(),s=rr(.6,1.8);world.add(ROCK,ROCKC,{p:[x,.08*s,z],s:[.35*s,.22*s,.3*s],r:[rnd()*6,rnd()*6,rnd()*6],k:rr(.85,1.1),shadow:true,ao:AO_BASE})}
 for(let i=0;i<26;i++){const[x,z]=outside(),s=rr(1,3);world.add(DISC,GRASS,{p:[x,0,z],s:[s,1,s*rr(.6,1)],r:[0,rnd()*6,0],k:rr(.82,.9)})}             // darker grass patches
 for(let i=0;i<140;i++){const[x,z]=outside();world.add(TUFT,GRASS,{p:[x,.05,z],s:[.05,.12,.05],r:[rr(-.3,.3),rnd()*6,rr(-.3,.3)],k:rr(.85,1.15)})} // grass tufts
@@ -322,7 +375,8 @@ for(let i=0;i<14;i++){ // ring of low-poly mountains with snow caps
 scene.add(new THREE.Mesh(world.geometry(true),bmat(0xffffff,{vertexColors:true})));
 {const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(SHADOW_TRIS,3));
  scene.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x10142a,transparent:true,opacity:.55,depthWrite:false,side:THREE.DoubleSide,
-  stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp})))}
+  stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp})))}}
+
 const CLOUDS=new THREE.Group();CLOUDS.position.set(10,0,10);scene.add(CLOUDS);   // turned slowly in draw(): the sky drifts
 {const sky=new Merger(); // clouds: a few flattened low-poly blobs, drawn without fog so they stay crisp
  for(let i=0;i<9;i++){const a=i/9*6.283+rr(-.3,.3),r=rr(45,70),x=10+Math.cos(a)*r,z=10+Math.sin(a)*r,y=rr(24,32),s=rr(3,5);
@@ -389,6 +443,65 @@ function makeSoldier(t){
  return{G,upper,vis,mf,legs,laser,meshes:[upper,legs[0].th,legs[0].sh,legs[1].th,legs[1].sh]}}
 const LASERG=new THREE.BoxGeometry(.01,.01,1),LASERM=bmat(0xff2a2a,{transparent:true,opacity:.6,depthWrite:false});
 
+// ============================== 6c. ENEMIES FROM REAL MODELS ==============================
+// Each kit = a character file + the gun shown in his hand (every gun is already in the file, attached to the right hand).
+// Shared per kit: cheap Lambert materials (instead of the files' heavier physically-based ones), a "hit flash" copy of each.
+const KIT_MODEL=[{f:'enemy',gun:'AK'},{f:'hazmat',gun:'Shotgun'},{f:'soldier',gun:'ShortCannon'},{f:'soldier',gun:'Sniper'}];
+const GUNS=['AK','GrenadeLauncher','Knife_1','Knife_2','Pistol','Revolver','Revolver_Small','RocketLauncher','ShortCannon','Shotgun','Shovel','SMG','Sniper','Sniper_2'];
+const MARKG=new THREE.OctahedronGeometry(.035,0),_v=new V3(),_bx=new THREE.Box3();
+function prepKits(){A.kits=KIT_MODEL.map(km=>{
+ const src=A.chars[km.f],root=THREE.SkeletonUtils.clone(src.scene),mats=new Map();
+ root.traverse(o=>{if(GUNS.includes(o.name))o.visible=o.name===km.gun;
+  if(o.isMesh){const key=o.material.name+(o.isSkinnedMesh?'S':'');
+   if(!mats.has(key)){const c=o.material.color.clone().convertLinearToSRGB();   // file colours are linear; this game works in display colours
+    mats.set(key,[new THREE.MeshLambertMaterial({color:c,skinning:o.isSkinnedMesh}),new THREE.MeshLambertMaterial({color:c,skinning:o.isSkinnedMesh,emissive:0x777777})])}
+   o.material=mats.get(key)[0];o.userData.mk=key}});   // (only the key is stored: three.js copies userData as JSON when cloning)
+ // scale to a 0.70-tile-tall human, standing on y=0
+ root.updateMatrixWorld(true);_bx.setFromObject(root);const s0=.7/(_bx.max.y-_bx.min.y);root.scale.setScalar(s0);root.position.y=-_bx.min.y*s0;root.updateMatrixWorld(true);
+ // hit spheres from the skeleton: head, chest, legs (so headshots land on the actual head)
+ const by=n=>{let y=0;root.traverse(o=>{if(o.name===n)y=o.getWorldPosition(_v).y});return y};
+ const hs=[[1,by('Head')+.045,.085],[0,by('Torso'),.14],[0,by('LowerLeg.L')+.05,.12]];
+ // muzzle: the thin end of the gun's longest axis (in the gun's own space)
+ let gun=null;root.traverse(o=>{if(o.name===km.gun)gun=o});const muz=muzzleOf(gun),gs=gun.getWorldScale(_v).x;
+ return{root,clips:src.animations,hs,muz,gs,gun:km.gun,mats}})}
+function muzzleOf(g){const pts=[];g.updateMatrixWorld(true);const inv=new THREE.Matrix4().copy(g.matrixWorld).invert();
+ g.traverse(o=>{if(!o.isMesh)return;const P=o.geometry.attributes.position,M=new THREE.Matrix4().multiplyMatrices(inv,o.matrixWorld);
+  for(let i=0;i<P.count;i+=3)pts.push(new V3().fromBufferAttribute(P,i).applyMatrix4(M))});
+ const mn=new V3(1e9,1e9,1e9),mx=new V3(-1e9,-1e9,-1e9);pts.forEach(p=>{mn.min(p);mx.max(p)});
+ const sz=new V3().subVectors(mx,mn),ax=sz.x>sz.y&&sz.x>sz.z?'x':sz.y>sz.z?'y':'z',oth=['x','y','z'].filter(a=>a!==ax);
+ const spread=end=>{const near=pts.filter(p=>Math.abs(p[ax]-end)<sz[ax]*.12);let lo=1e9,hi=-1e9;near.forEach(p=>{lo=Math.min(lo,p[oth[0]]);hi=Math.max(hi,p[oth[0]])});return hi-lo};
+ const end=spread(mn[ax])<spread(mx[ax])?mn[ax]:mx[ax],m=new V3().addVectors(mn,mx).multiplyScalar(.5);m[ax]=end;
+ const near=pts.filter(p=>Math.abs(p[ax]-end)<sz[ax]*.12);m[oth[0]]=near.reduce((a,p)=>a+p[oth[0]],0)/near.length;m[oth[1]]=near.reduce((a,p)=>a+p[oth[1]],0)/near.length;return m}
+function makeModelSoldier(t){const K=A.kits[t],G=new THREE.Group();G.rotation.order='YXZ';
+ const model=THREE.SkeletonUtils.clone(K.root);G.add(model);const meshes=[];
+ model.traverse(o=>{if(o.isMesh){meshes.push(o);o.userData.pair=K.mats.get(o.userData.mk)}});
+ const mixer=new THREE.AnimationMixer(model),act={};for(const c of K.clips)act[c.name]=mixer.clipAction(c);
+ act.Death.setLoop(THREE.LoopOnce,1);act.Death.clampWhenFinished=true;act.HitReact.setLoop(THREE.LoopOnce,1);
+ act.Idle.play();
+ let gun=null;model.traverse(o=>{if(o.name===K.gun)gun=o});
+ const mf=new THREE.Mesh(MFG,MFM);mf.position.copy(K.muz);mf.scale.setScalar(1/K.gs);mf.visible=false;gun.add(mf);   // muzzle flash sits on his gun
+ const mark=new THREE.Mesh(MARKG,VIS1);mark.position.y=.84;mark.visible=false;G.add(mark);   // red diamond over his head = about to fire
+ const bl=new THREE.Mesh(BLOBG,BLOBM);bl.position.y=.012;G.add(bl);
+ G.scale.setScalar(KIT[t].scale);
+ let laser=null;if(t==3){laser=new THREE.Mesh(LASERG,LASERM);laser.visible=false;scene.add(laser)}
+ return{G,model,mixer,act,cur:act.Idle,meshes,mf,mark,laser,hs:K.hs,isModel:true}}
+const spawnSoldier=t=>A?makeModelSoldier(t):makeSoldier(t);
+// ANIMATION for model enemies: pick idle / walk / run (shooting versions while fighting), cross-fade between them, and scale the
+// playback speed to his real speed so feet keep pace with the ground. Skeleton maths is skipped while he's hidden and far (saves phones).
+function animateModel(b,dt){
+ const maxT=(b.ty==1?7:4.5)*dt,turn=Math.max(-maxT,Math.min(maxT,wrapA(b.face-b.yaw)));b.yaw+=turn;b.G.rotation.set(0,b.yaw,0);
+ const sp=b.mv*LV[lvl].spd*b.sp,fight=b.tk||(b.los&&b.state==='fight');
+ const name=sp<.12?(fight?'Idle_Shoot':'Idle'):sp<.75?(fight?'Walk_Shoot':'Walk'):(fight?'Run_Shoot':'Run');
+ const next=b.act[name];if(next!==b.cur){next.reset().fadeIn(.2).play();b.cur.fadeOut(.2);b.cur=next}
+ next.timeScale=sp<.12?1:Math.max(.6,Math.min(1.6,sp/(name[0]==='W'?.55:1.2)));
+ b.animT=(b.animT||0)+dt;if(b.G.visible||Math.hypot(P.x-b.x,P.y-b.y)<8){b.mixer.update(b.animT);b.animT=0}
+ b.stepD=(b.stepD||0)+sp*dt;if(b.stepD>.32){b.stepD=0;return sp>.3}return false}
+function hitReact(b){if(!b.isModel)return;const h=b.act.HitReact;h.reset();h.setEffectiveWeight(.8);h.fadeIn(.04).play()}   // flinch, blended over whatever he's doing
+function setFlash(b,on){if(b.isModel)b.meshes.forEach(o=>{const m=o.userData.pair;if(m)o.material=m[on?1:0]});else{const mt=on?BODYF:BODYM;b.meshes.forEach(o=>o.material=mt)}}
+function onDeath(b){b.mf.visible=false;b.dt=0;setFlash(b,false);dying.push(b);
+ if(b.isModel){b.mark.visible=false;b.cur.fadeOut(.12);b.act.HitReact.stop();b.act.Death.reset().fadeIn(.08).play()}else b.vis.material=VIS2}
+function deathModel(b,dt){const t=(b.dt+=dt);b.mixer.update(dt);if(t>3.5)b.G.position.y-=dt*.3;return t<4.5}   // plays the death animation, then sinks away
+
 // ============================== 7. NATURAL MOVEMENT ==============================
 const wrapA=a=>Math.atan2(Math.sin(a),Math.cos(a));
 // A springy value: it chases 0 with a little overshoot, like a body absorbing a jolt (recoil, getting hit).
@@ -427,7 +540,9 @@ function animateDeath(b,dt){const t=(b.dt+=dt),k=Math.min(1,t/.25),f=Math.min(1,
 
 // ============================== 8. YOUR RIFLE (attached to the camera) ==============================
 const VM=new THREE.Group();cam.add(VM);
-{const g=new Merger(),D=0x2b2f3a,DD=0x1b1f27,GLOVE=0x3a3530,SLEEVE=0x4a5240;
+function buildViewmodel(){const g=new Merger(),D=0x2b2f3a,DD=0x1b1f27,GLOVE=0x3a3530,SLEEVE=0x4a5240;
+ if(A){g.add(A.props.ak,0xffffff,{p:[0,-.115,-.07],r:[0,-Math.PI/2,0],s:.3,smooth:true});flash.position.set(0,.005,-.3)}   // the real AK model (barrel forward)
+ else{
  g.add(cbox(.045,.06,.2,.008),D,{p:[0,0,-.02]});                          // receiver
  g.add(cbox(.03,.012,.2,.003),DD,{p:[0,.036,-.03]});                      // top rail
  g.add(cbox(.042,.048,.14,.01),0x3a3f4c,{p:[0,.002,-.17]});               // handguard
@@ -439,7 +554,7 @@ const VM=new THREE.Group();cam.add(VM);
  g.add(cbox(.035,.055,.12,.01),D,{p:[0,-.005,.15]});                      // stock
  g.add(cbox(.03,.035,.06,.006),DD,{p:[0,.06,-.01]});                      // optic mount
  g.add(cyl(.016,.016,.07,8),DD,{p:[0,.068,-.01],r:[Math.PI/2,0,0]});      // optic tube
- g.add(cyl(.012,.012,.072,8),0x35f2cf,{p:[0,.068,-.01],r:[Math.PI/2,0,0],k:.6}); // lens
+ g.add(cyl(.012,.012,.072,8),0x35f2cf,{p:[0,.068,-.01],r:[Math.PI/2,0,0],k:.6});} // lens
  g.add(ico(.03,1),GLOVE,{p:[0,-.05,.07],s:[1,1.2,1.3],smooth:true});                   // right hand on the grip
  g.seg([.02,-.07,.09],[.07,-.32,.22],.034,SLEEVE,{smooth:true});                          // right forearm
  g.add(ico(.03,1),GLOVE,{p:[-.012,-.028,-.17],s:[1.2,1,1.4],smooth:true});             // left hand on the handguard
@@ -551,7 +666,7 @@ let RG=null;
 function rangeSpawn(){for(let k=0;k<80;k++){const x=1.5+Math.random()*17,y=1.5+Math.random()*16;if(cell(x,y))continue;
   const dx=x-P.x,dy=y-P.y,d=Math.hypot(dx,dy),rel=wrapA(Math.atan2(dy,dx)-P.a);if(d<4||d>11||Math.abs(rel)>1.6)continue;
   cast(P.x,P.y,dx/d,dy/d);if(RD<d)continue;                                     // must be in the open
-  const ty=[0,2,3][Math.random()*3|0],r=makeSoldier(ty),yaw=Math.atan2(-dx,-dy);scene.add(r.G);
+  const ty=[0,2,3][Math.random()*3|0],r=spawnSoldier(ty),yaw=Math.atan2(-dx,-dy);scene.add(r.G);
   const b=Object.assign(r,{x,y,px:x,py:y,hp:60*[1,.55,2.2,.8][ty],ty,sc:KIT[ty].scale,sp:1,stg:0,tk:false,tkT:0,cd:9,ph:Math.random()*6,hit:0,t:0,mode:1,
    sd:Math.random()<.5?-1:1,vx:0,vy:0,mv:0,seen:1,los:true,fl:false,tg:false,yaw,face:yaw,mvA:yaw,phase:0,turnRate:0,lean:0,kick:{x:0,v:0},mfT:0,dt:0});
   bots.push(b);RG.cur={b,t0:time,hit:null,sign:0,crossed:false,overs:0};snd('lock',.8,Math.sin(rel));return}}   // beep from its direction
@@ -630,7 +745,7 @@ function reset(){
  RG=RANGE()?{n:0,total:12,cur:null,wait:1.2,log:[]}:null;     // firing range: targets come one at a time (see section 13b)
  const hidden=p=>{const dx=p[0]-P.x,dy=p[1]-P.y,d=Math.hypot(dx,dy);cast(P.x,P.y,dx/d,dy/d);return RD<d};   // FAIR START: nobody spawns where you can see them
  for(let i=0;i<LV[lvl].n;i++){let p,k=0;do{p=open()}while((Math.hypot(p[0]-P.x,p[1]-P.y)<6||!hidden(p))&&++k<200);
-  const ty=[0,0,1,0,2,3][i%6],r=makeSoldier(ty),yaw=Math.random()*6.283;scene.add(r.G);
+  const ty=[0,0,1,0,2,3][i%6],r=spawnSoldier(ty),yaw=Math.random()*6.283;scene.add(r.G);
   bots.push(Object.assign(r,{x:p[0],y:p[1],hp:LV[lvl].hp*[1,.55,2.2,.8][ty],ty,sc:KIT[ty].scale,sp:[1,1.7,.6,.8][ty],stg:0,tk:false,tkT:0,cd:1+Math.random()*2,ph:Math.random()*6,
    hit:0,t:0,mode:0,sd:1,vx:0,vy:0,mv:0,seen:0,los:false,fl:false,tg:false,yaw,face:yaw,mvA:yaw,phase:Math.random()*6,turnRate:0,lean:0,kick:{x:0,v:0},mfT:0,dt:0,
    state:'patrol',stT:0,goal:-1,f:new Int16Array(400),supp:0,peek:false,wait:0,peekDur:0}))}   // brain: everyone starts on patrol
@@ -648,7 +763,8 @@ function finish(win){over=true;const place=win?1:bots.filter(b=>b.hp>0).length+1
  $('end').style.display='flex';$('low').style.opacity=0;document.body.classList.add('menu')}
 function feed(t){const d=document.createElement('div');d.textContent=t;$('feed').appendChild(d);setTimeout(()=>d.remove(),3000)}
 function kill(b,head,byPlayer){b.tk=false;b.G.visible=true;if(b.laser)b.laser.visible=false;
- if(RANGE()){b.vis.material=VIS2;b.mf.visible=false;b.meshes.forEach(o=>o.material=BODYM);b.dt=0;dying.push(b);P.kills++;snd('kill');return}  // range: no drops, no match endb.vis.material=VIS2;b.mf.visible=false;b.meshes.forEach(o=>o.material=BODYM);b.dt=0;dying.push(b);
+ onDeath(b);                                                                     // start the death animation
+ if(RANGE()){P.kills++;snd('kill');return}                                      // range: no drops, no match end
  if(byPlayer){P.kills++;snd('kill');feed((head?'Headshot! ':'')+'You eliminated Operator '+(Math.random()*90+10|0));
   P.streak=time-P.lastKill<4?P.streak+1:1;P.lastKill=time;                     // kill streaks (within 4 s of each other)
   if(P.streak>1){banner(['','','DOUBLE KILL','TRIPLE KILL'][P.streak]||'RAMPAGE');snd('streak')}}
@@ -677,7 +793,7 @@ function fire(){
  cast(P.x,P.y,hx,hy);const wallT=Math.min(RD/cp,40),floorT=d.y<0?o.y/-d.y:99;let bt=Math.min(wallT,floorT),best=null,head=false;
  for(let pass=0;pass<2&&!best;pass++){const mg=pass?(STD()?1.7:2.4):1; // pass 2 = bullet magnetism: near-misses on the BODY still count (head stays skill-only)
   for(const b of bots){if(b.hp<=0)continue;
-   for(const[hd,cy,r]of HS){if(pass&&hd)continue;
+   for(const[hd,cy,r]of(b.hs||HS)){if(pass&&hd)continue;
     const vx=b.x-o.x,vy=cy*b.sc-o.y,vz=b.y-o.z,t=vx*d.x+vy*d.y+vz*d.z;if(t<=0||(pass&&t>16))continue;
     const rr2=r*b.sc*mg,q=vx*vx+vy*vy+vz*vz-t*t;if(q<rr2*rr2){const th=t-Math.sqrt(rr2*rr2-q);if(th<bt){bt=th;best=b;head=!!hd}}}}}
  for(const b of bots){if(b.hp<=0||b===best)continue;            // NEAR MISSES suppress: they flinch and, if it keeps happening, take cover
@@ -686,7 +802,7 @@ function fire(){
  if(best)best.supp+=.6;
  const end=_e.copy(o).addScaledVector(d,bt);
  tracer(VM.localToWorld(_m.set(0,.005,-.36)),end);
- if(best){snd(head?'head':'hit');spark(end,3);best.hp-=head?68:34;best.hit=.12;best.kick.v-=head?9:5; // the hit jolts his body
+ if(best){snd(head?'head':'hit');spark(end,3);best.hp-=head?68:34;best.hit=.12;best.kick.v-=head?9:5;hitReact(best); // the hit jolts his body
   P.hits++;if(head)P.heads++;walk(best,d.x*(head?.06:.04),d.z*(head?.06:.04));                       // ...and knocks him back a little
   best.stg=Math.max(best.stg,(head?.45:.18)*(best.ty==2?.4:1));best.cd=Math.max(best.cd,head?.8:.35);  // hit = stagger
   P.hm=.15;const h=$('hm');h.style.borderColor=head?'#ffb84d':'#fff';h.classList.add('on');
@@ -863,15 +979,15 @@ function update(dt){
   // facing: at you during a fight, otherwise where he is walking
   if(los&&d<13)b.face=Math.atan2(dx,dy);else if(b.mv>.15)b.face=Math.atan2(b.vx,b.vy);
   if(b.mv>.05)b.mvA=Math.atan2(b.vx,b.vy);
-  if(animate(b,dt)&&d<9)snd('step',(1-d/9)*.5,Math.sin(ha));   // footsteps you can hear (and locate) through walls
+  if((b.isModel?animateModel(b,dt):animate(b,dt))&&d<9)snd('step',(1-d/9)*.5,Math.sin(ha));   // footsteps you can hear (and locate) through walls
   if(b.mf.visible&&(b.mfT-=dt)<=0)b.mf.visible=false;
   if(b.laser){const on=b.tk&&los&&b.cd<1.4&&!over;                       // laser sight: on for ~1.4 s before each shot
    if(on&&!b.laser.visible)snd('lock',Math.max(.2,1-d/18),Math.sin(ha));   // a lock-on beep tells you which way to look
    b.laser.visible=on;if(on){b.mf.getWorldPosition(_m);_e.set(P.x,.5,P.y);_e.lerp(_m,Math.min(.9,.45/Math.max(.5,d)));  // stop short of your face so it stays a thin line
     b.laser.position.copy(_m).lerp(_e,.5);b.laser.scale.z=_m.distanceTo(_e);b.laser.lookAt(_e)}}
-  const tg=(b.tk&&b.cd<.25)||(b.ty==1&&d<2.2);if(tg!==b.tg){b.tg=tg;b.vis.material=tg?VIS1:VIS0} // visor warns you of the shot
-  if((b.hit>0)!==b.fl){b.fl=b.hit>0;const mt=b.fl?BODYF:BODYM;b.meshes.forEach(o=>o.material=mt)}}
- for(let i=dying.length-1;i>=0;i--)if(!animateDeath(dying[i],dt)){scene.remove(dying[i].G);dying.splice(i,1)}
+  const tg=(b.tk&&b.cd<.25)||(b.ty==1&&d<2.2);if(tg!==b.tg){b.tg=tg;if(b.isModel)b.mark.visible=tg;else b.vis.material=tg?VIS1:VIS0} // visor warns you of the shot
+  if((b.hit>0)!==b.fl){b.fl=b.hit>0;setFlash(b,b.fl)}}
+ for(let i=dying.length-1;i>=0;i--)if(!(dying[i].isModel?deathModel:animateDeath)(dying[i],dt)){scene.remove(dying[i].G);dying.splice(i,1)}
  // HUD (checked ~15x/sec, and an element is only touched when its value changed: DOM writes are slow on phones)
  if(fn%4==0){
  sT(H.alive,bots.filter(b=>b.hp>0).length+1);sT(H.kills,P.kills);
@@ -943,7 +1059,7 @@ function autoRes(q){const hi=Math.min(window.devicePixelRatio||1,q.hi),lo=Math.m
  if(fps<q.fps*.85&&pr>lo+.001){pr=Math.max(lo,pr-.1);ceil=pr;good=0;R.setPixelRatio(pr);size()}
  else if(fps>=q.fps*.95&&pr+.1<=Math.min(hi,ceil)+.001){if(++good>=2){good=0;pr+=.1;R.setPixelRatio(pr);size()}}
  else good=0}
-function start(){ac();reset();snap();
+function start(){if(!READY)return;ac();reset();snap();
  R.compile(scene,cam);   // build every shader now, behind the menu, so the first fight doesn't stutter
  acc=0;fc=ft=0;last=performance.now();paused=0;
  const f=$('fade');f.style.transition='none';f.style.opacity=1;requestAnimationFrame(()=>{f.style.transition='';f.style.opacity=0});banner(RANGE()?'FIRING RANGE':'DROP IN');fpsEl.style.display=showF||RANGE()?'block':'none'; // fade in + intro banner
@@ -974,5 +1090,11 @@ if(DESK){bGy.style.display='none';                 // no gyro on laptops
  $('hint').textContent='WASD move · Mouse look · Left click fire · Right click scope · Shift sprint · R reload · Esc pause · PlayStation/Xbox pad works too'}
 else $('hint').textContent='Hold your phone sideways';
 $('lv').onclick=()=>{lvl=(lvl+1)%3;lab();sv()};bFa.onclick=()=>{af^=1;lab();sv()};bGy.onclick=()=>{gyS=(gyS+1)%5;lab();sv()};bQl.onclick=()=>{ql=(ql+1)%3;applyQ();lab();sv()};bFp.onclick=()=>{showF^=1;lab();sv()};bLs.onclick=()=>{sens=(sens+1)%3;lab();sv()};bSk.onclick=()=>{shake^=1;lab();sv()};applyQ();lab();
-reset();snap();over=true;requestAnimationFrame(loop);
+// BOOT: load the models (with a 20 s safety timeout), then build the world, your gun and the enemies.
+// Anything fails -> the hand-built versions are used, so the game always starts.
+let READY=false;$('deploy').textContent='LOADING…';
+Promise.race([loadAssets(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),20000))])
+ .then(a=>{A=a;prepKits();ITEMG[1]=new Merger().add(A.props.health,0xffffff,{s:.2/.86,smooth:true}).geometry(false)})
+ .catch(e=>{console.warn('Using built-in shapes:',e);A=null})
+ .finally(()=>{buildWorld();buildViewmodel();R.compile(scene,cam);reset();snap();over=true;READY=true;$('deploy').textContent='DEPLOY';requestAnimationFrame(loop)});
 </script></body></html>
