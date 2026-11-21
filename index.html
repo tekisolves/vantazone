@@ -526,6 +526,7 @@ function snd(n,v,pan){if(!AC&&!ac())return;if(AC.state!=='running')return;const 
  case'hurt':tn(t,110,45,.22,'sine',.5);nz(t,.18,'lowpass',700,.6,.35);break;
  case'reload':nz(t,.04,'bandpass',2200,3,.25);nz(t+.55,.05,'bandpass',1500,3,.3);nz(t+1.3,.04,'bandpass',2400,3,.3);break;
  case'pick':tn(t,660,990,.09,'triangle',.1);tn(t+.07,990,1320,.1,'triangle',.08);break
+ case'call':nz(t,.06,'bandpass',1800,2,.3*v,pan);tn(t+.06,880,880,.06,'square',.05*v,pan);tn(t+.13,1175,1175,.07,'square',.05*v,pan);break   // radio callout
  case'lock':tn(t,1500,1500,.07,'square',.06*v,pan);tn(t+.1,1500,1500,.07,'square',.06*v,pan);break
  case'beat':tn(t,70,45,.12,'sine',.5);tn(t+.17,64,40,.12,'sine',.35);break        // low-health heartbeat
  case'streak':tn(t,520,780,.12,'triangle',.12);tn(t+.1,780,1170,.16,'triangle',.12);break}}
@@ -536,7 +537,7 @@ const vib=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
 const HS=[[1,.655,.075],[0,.48,.15],[0,.22,.12]],PL=document.querySelectorAll('.plates i'),dying=[];
 const dm=document.createElement('div');dm.style.cssText='position:absolute;left:50%;top:50%;width:6px;height:60px;margin:-90px 0 0 -3px;transform-origin:3px 90px;background:linear-gradient(#ff3050,transparent);border-radius:3px;opacity:0;transition:opacity .4s;pointer-events:none';$('hud').appendChild(dm);let dmT=0; // damage-direction bar
 const DG=new Int16Array(400),BQ=new Int16Array(400);let dgT=0;
-function flood(){DG.fill(-1);let h=0,t=0;const s0=(P.y|0)*20+(P.x|0);DG[s0]=0;BQ[t++]=s0; // BFS distance-to-player over the 20x20 tile grid
+function flood(){DG.fill(-1);let h=0,t=0;const s0=(INTEL.y|0)*20+(INTEL.x|0);DG[s0]=0;BQ[t++]=s0; // BFS distance to your LAST KNOWN position (enemies aren't psychic)
  while(h<t){const c=BQ[h++],cx=c%20,cy=c/20|0;for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3);if(nx<0||ny<0||nx>19||ny>19)continue;const n=ny*20+nx;if(DG[n]<0&&!cell(nx,ny)){DG[n]=DG[c]+1;BQ[t++]=n}}}}
 function steer(b,ang){const cx=b.x|0,cy=b.y|0;let best=DG[cy*20+cx],bx=-1,by=0;if(best<0)return ang; // step to the neighbour tile closest to the player
  for(let k=0;k<8;k++){const dx=k<4?(k==0)-(k==1):(k==4||k==5?1:-1),dy=k<4?(k==2)-(k==3):(k==4||k==6?1:-1),nx=cx+dx,ny=cy+dy;
@@ -573,6 +574,48 @@ function rangeFinish(){over=true;const L=RG.log,k=L.filter(r=>r.kill!==null),f=L
  $('es').innerHTML=`<b>${k.length}/${RG.total}</b> targets · score ${score}${score>best?' · new best!':' · best '+best}<br>First hit ${tFirst.toFixed(2)}s · Kill ${tKill.toFixed(2)}s · Accuracy ${acc}% · Overshoot ${ov.toFixed(1)} per target<br>${tip}`;
  $('end').style.display='flex';document.body.classList.add('menu')}
 
+// ============================== 13c. ENEMY BRAIN ==============================
+// Enemies only know where you are if one of them SEES you, HEARS you (gunfire, sprinting close by), or a squadmate
+// CALLS IT OUT. Each enemy is in one state at a time:
+//   patrol: wander inside the storm (nobody knows where you are)
+//   hunt:   head for your last known position; if you're not there, go back to patrolling
+//   fight:  can see you: strafe / hold / back off depending on kit, shoot when it's his turn
+//   cover:  shot at or nearly hit: run to the nearest spot you can't see, wait, then peek out again
+//   flank:  (Standard) circle round to your side while a squadmate keeps you busy
+const INTEL={x:10,y:10,t:-99};let lastCall=-9;
+const know=()=>time-INTEL.t<10;                                     // intel goes stale after 10 s without contact
+function reveal(x,y){INTEL.x=x;INTEL.y=y;INTEL.t=time}
+const cellOf=b=>(b.y|0)*20+(b.x|0);
+function setState(b,s){if(b.state!==s){b.state=s;b.stT=0}}
+// Distance field from a goal cell (the same BFS as above); an enemy walks "downhill" along it around walls
+function field(f,goal){f.fill(-1);let h=0,t=0;f[goal]=0;BQ[t++]=goal;
+ while(h<t){const c=BQ[h++],cx=c%20,cy=c/20|0;for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3);if(nx<0||ny<0||nx>19||ny>19)continue;const n=ny*20+nx;if(f[n]<0&&!cell(nx,ny)){f[n]=f[c]+1;BQ[t++]=n}}}}
+function follow(b,f,ang){const cx=b.x|0,cy=b.y|0;let best=f[cy*20+cx],bx=-1,by=0;if(best<0)return ang;
+ for(let k=0;k<8;k++){const dx=k<4?(k==0)-(k==1):(k==4||k==5?1:-1),dy=k<4?(k==2)-(k==3):(k==4||k==6?1:-1),nx=cx+dx,ny=cy+dy;
+  if(nx<0||ny<0||nx>19||ny>19||cell(nx,ny)||(k>3&&(cell(cx+dx,cy)||cell(cx,cy+dy))))continue;const v=f[ny*20+nx];if(v>=0&&v<best){best=v;bx=nx;by=ny}}
+ if(bx<0)return f===b.f&&b.goal>=0?Math.atan2((b.goal/20|0)+.5-b.y,b.goal%20+.5-b.x):ang;   // already in the goal cell: head for its centre
+ return Math.atan2(by+.5-b.y,bx+.5-b.x)}
+function setGoal(b,c){b.goal=c;field(b.f,c)}
+function wander(){const r=stormR()*.8;for(let k=0;k<40;k++){const x=10+(Math.random()*2-1)*r,y=10+(Math.random()*2-1)*r;if(inMap(x|0,y|0)&&!cell(x,y)&&Math.hypot(x-10,y-10)<r)return(y|0)*20+(x|0)}return cellOf({x:10.5,y:10.5})}
+// COVER: the nearest cell (within 5 steps) that you can't see from your last known position, preferring spots against a wall
+const CQ=new Int16Array(400),CD=new Int8Array(400);
+function findCover(b){CD.fill(-1);let h=0,t=0;const s0=cellOf(b);CD[s0]=0;CQ[t++]=s0;
+ while(h<t){const c=CQ[h++],cx=c%20,cy=c/20|0;
+  if(c!==s0){const px=cx+.5,py=cy+.5,dx=INTEL.x-px,dy=INTEL.y-py,dd=Math.hypot(dx,dy)||1;cast(px,py,dx/dd,dy/dd);
+   if(RD<dd&&(isWall(cx+1,cy)||isWall(cx-1,cy)||isWall(cx,cy+1)||isWall(cx,cy-1)))return c}
+  if(CD[c]>=5)continue;
+  for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3),n=ny*20+nx;if(inMap(nx,ny)&&CD[n]<0&&!cell(nx,ny)){CD[n]=CD[c]+1;CQ[t++]=n}}}
+ return -1}
+// FLANK: a cell 3-6 steps from your last known position, on the opposite side from the squadmate already fighting you
+function findFlank(b,eng){const a2=Math.atan2(eng.y-INTEL.y,eng.x-INTEL.x);let best=-1,bd=1e9;
+ for(let i=0;i<400;i++){if(DG[i]<3||DG[i]>6)continue;const x=i%20+.5,y=(i/20|0)+.5;
+  if(Math.abs(wrapA(Math.atan2(y-INTEL.y,x-INTEL.x)-a2))<1.6)continue;const dd=Math.hypot(x-b.x,y-b.y);if(dd<bd){bd=dd;best=i}}
+ return best}
+// "SPOTTED" warning on the HUD (with a radio callout sound) when an enemy first sees you
+const spEl=document.createElement('div');spEl.className='pill';spEl.textContent='SPOTTED';
+spEl.style.cssText='position:absolute;top:64px;left:50%;transform:translateX(-50%);color:#ff4a2e;border-color:rgba(255,74,46,.55);opacity:0;transition:opacity .3s';$('hud').appendChild(spEl);
+function spotted(){spEl.style.opacity=1;clearTimeout(spotted.t);spotted.t=setTimeout(()=>spEl.style.opacity=0,1500)}
+
 const MT=[2,3,0]; // max enemies shooting at once (Training, Standard, Range: nobody shoots)
 
 // ============================== 13. GAME STATE ==============================
@@ -583,11 +626,14 @@ function reset(){
  P={x:10,y:17.5,a:-Math.PI/2,pit:0,vx:0,vy:0,spd:0,hp:100,ar:150,ammo:30,res:120,rel:0,cd:0,kick:0,bob:0,kills:0,hm:0,bl:0,rc:0,az:0,tg:null,spK:0,relK:0,
   tr:0,shots:0,hits:0,heads:0,streak:0,lastKill:-9,hb:0,stormMsg:0,edgeT:0,tgPrev:null,tgBear:0};   // tr = screen-shake 'trauma'; the rest are end-of-match stats
  const open=()=>{let x,y;do{x=1.5+Math.random()*17;y=1.5+Math.random()*17}while(cell(x,y));return[x,y]};
+ INTEL.t=-99;lastCall=-9;                                       // new match: nobody knows where you are
  RG=RANGE()?{n:0,total:12,cur:null,wait:1.2,log:[]}:null;     // firing range: targets come one at a time (see section 13b)
- for(let i=0;i<LV[lvl].n;i++){let p;do{p=open()}while(Math.hypot(p[0]-P.x,p[1]-P.y)<6);
+ const hidden=p=>{const dx=p[0]-P.x,dy=p[1]-P.y,d=Math.hypot(dx,dy);cast(P.x,P.y,dx/d,dy/d);return RD<d};   // FAIR START: nobody spawns where you can see them
+ for(let i=0;i<LV[lvl].n;i++){let p,k=0;do{p=open()}while((Math.hypot(p[0]-P.x,p[1]-P.y)<6||!hidden(p))&&++k<200);
   const ty=[0,0,1,0,2,3][i%6],r=makeSoldier(ty),yaw=Math.random()*6.283;scene.add(r.G);
   bots.push(Object.assign(r,{x:p[0],y:p[1],hp:LV[lvl].hp*[1,.55,2.2,.8][ty],ty,sc:KIT[ty].scale,sp:[1,1.7,.6,.8][ty],stg:0,tk:false,tkT:0,cd:1+Math.random()*2,ph:Math.random()*6,
-   hit:0,t:0,mode:0,sd:1,vx:0,vy:0,mv:0,seen:0,los:false,fl:false,tg:false,yaw,face:yaw,mvA:yaw,phase:Math.random()*6,turnRate:0,lean:0,kick:{x:0,v:0},mfT:0,dt:0}))}
+   hit:0,t:0,mode:0,sd:1,vx:0,vy:0,mv:0,seen:0,los:false,fl:false,tg:false,yaw,face:yaw,mvA:yaw,phase:Math.random()*6,turnRate:0,lean:0,kick:{x:0,v:0},mfT:0,dt:0,
+   state:'patrol',stT:0,goal:-1,f:new Int16Array(400),supp:0,peek:false,wait:0,peekDur:0}))}   // brain: everyone starts on patrol
  if(!RANGE())for(let i=0;i<7;i++){const p=open();spawnItem(p[0],p[1],i%3)}
  time=0;over=false;$('feed').innerHTML='';
 }
@@ -623,7 +669,8 @@ function reload(){if(P.rel>0||P.ammo>=30||P.res<=0)return;P.rel=1.6;snd('reload'
 function fire(){
  if(P.rel>0||P.cd>0||over)return;
  if(P.ammo<=0){reload();return}
- P.ammo--;P.shots++;P.tr=Math.min(1,P.tr+.05);P.cd=.095;P.kick=1;fbuf=0;P.bl=Math.min(1,P.bl+.2);P.pit+=.01;P.rc+=.01;snd('shot');vib(8);cam.updateMatrixWorld(true);
+ P.ammo--;P.shots++;if(!RANGE()&&bots.some(b=>b.hp>0&&Math.hypot(b.x-P.x,b.y-P.y)<10))reveal(P.x,P.y);  // gunfire gives your position away to anyone within earshot
+ P.tr=Math.min(1,P.tr+.05);P.cd=.095;P.kick=1;fbuf=0;P.bl=Math.min(1,P.bl+.2);P.pit+=.01;P.rc+=.01;snd('shot');vib(8);cam.updateMatrixWorld(true);
  flash.rotation.z=Math.random()*3;flash.scale.setScalar(.8+Math.random()*.6);
  const a=P.a+(Math.random()-.5)*(.012+.03*P.bl)*(1-.6*P.az),cp=Math.cos(P.pit),hx=Math.cos(a),hy=Math.sin(a),o=cam.position;
  const d=_d.set(hx*cp,Math.sin(P.pit),hy*cp);
@@ -633,6 +680,10 @@ function fire(){
    for(const[hd,cy,r]of HS){if(pass&&hd)continue;
     const vx=b.x-o.x,vy=cy*b.sc-o.y,vz=b.y-o.z,t=vx*d.x+vy*d.y+vz*d.z;if(t<=0||(pass&&t>16))continue;
     const rr2=r*b.sc*mg,q=vx*vx+vy*vy+vz*vz-t*t;if(q<rr2*rr2){const th=t-Math.sqrt(rr2*rr2-q);if(th<bt){bt=th;best=b;head=!!hd}}}}}
+ for(const b of bots){if(b.hp<=0||b===best)continue;            // NEAR MISSES suppress: they flinch and, if it keeps happening, take cover
+  const vx=b.x-o.x,vy=.45*b.sc-o.y,vz=b.y-o.z,t=vx*d.x+vy*d.y+vz*d.z;if(t<=0||t>bt)continue;
+  if(vx*vx+vy*vy+vz*vz-t*t<1){b.supp+=.3;b.kick.v-=1.5}}       // within ~1 tile of his body
+ if(best)best.supp+=.6;
  const end=_e.copy(o).addScaledVector(d,bt);
  tracer(VM.localToWorld(_m.set(0,.005,-.36)),end);
  if(best){snd(head?'head':'hit');spark(end,3);best.hp-=head?68:34;best.hit=.12;best.kick.v-=head?9:5; // the hit jolts his body
@@ -735,7 +786,8 @@ function update(dt){
  P.vx+=(tx-P.vx)*e;P.vy+=(ty-P.vy)*e;
  if(l===0&&Math.abs(P.vx)+Math.abs(P.vy)<.02)P.vx=P.vy=0;
  const pb=P.bob;walk(P,P.vx*dt,P.vy*dt);P.spd=Math.hypot(P.vx,P.vy);if(P.spd>.1)P.bob+=dt*P.spd*4.1;
- if(P.spd>.6&&Math.floor(pb/Math.PI)!==Math.floor(P.bob/Math.PI))snd('step',held.s?.35:.22);   // your own footsteps
+ if(P.spd>.6&&Math.floor(pb/Math.PI)!==Math.floor(P.bob/Math.PI)){snd('step',held.s?.35:.22);   // your own footsteps
+  if(P.spd>2.6&&!RANGE()&&bots.some(b=>b.hp>0&&Math.hypot(b.x-P.x,b.y-P.y)<4.5))reveal(P.x,P.y)}  // sprinting is loud: close enemies hear you (walking is quiet)
  fbuf-=dt; if(held.f||held.f2||pad.f||keys[' ']||fbuf>0||aim)fire();
  if(P.rel>0){P.rel-=dt;if(P.rel<=0){const n=Math.min(30-P.ammo,P.res);P.ammo+=n;P.res-=n}}
  // storm
@@ -748,6 +800,10 @@ function update(dt){
   if(Math.hypot(it.x-P.x,it.y-P.y)<.45){if(it.t==1)P.hp=Math.min(100,P.hp+30);else if(it.t==2)P.ar=Math.min(150,P.ar+50);else P.res+=30;
    feed(['+30 Ammo','+30 Health','+1 Armour plate'][it.t]);snd('pick');scene.remove(it.G);items.splice(i,1)}}
  if(RANGE()&&!over)rangeUpdate(dt);
+ // FLANKING (Standard): every 2 s, if someone is fighting you and nobody is flanking yet, send one hunter round your side
+ if(STD()&&fn%120==0&&know()){const eng=bots.find(o=>o.hp>0&&o.state==='fight');
+  if(eng&&!bots.some(o=>o.hp>0&&o.state==='flank')){const f=bots.find(o=>o.hp>0&&o.ty!=3&&(o.state==='hunt'||o.state==='patrol')&&Math.hypot(o.x-P.x,o.y-P.y)>5);
+   if(f){const c=findFlank(f,eng);if(c>=0){setState(f,'flank');setGoal(f,c)}}}}
  // enemies
  let tks=0;for(let i=0;i<bots.length;i++)if(bots[i].tk&&bots[i].hp>0)tks++;
  for(let bi=0;bi<bots.length;bi++){const b=bots[bi];if(b.hp<=0)continue;b.hit=Math.max(0,b.hit-dt);
@@ -756,18 +812,42 @@ function update(dt){
    // biggest saving on a weak phone. Two extra rays to his left and right edges stop half-visible enemies from popping in late.
    let v=b.los||d<2;if(!v)for(const sg of[-1,1]){const tx=b.x-dy/d*.3*sg-P.x,ty=b.y+dx/d*.3*sg-P.y,td=Math.hypot(tx,ty);cast(P.x,P.y,tx/td,ty/td);if(RD>td){v=true;break}}
    b.G.visible=v}
-  const los=b.los,L=LV[lvl];
-  if(!los)b.seen=0;else if(!b.seen){b.seen=1;b.cd=Math.max(b.cd,L.react)}  // reaction delay: no instant snap-shots
+  const los=b.los,L=LV[lvl],sees=los&&d<14;
+  if(!los)b.seen=0;else if(!b.seen){b.seen=1;                                    // he has just spotted you
+   const inView=Math.abs(wrapA(Math.atan2(b.y-P.y,b.x-P.x)-P.a))<.9;
+   b.cd=Math.max(b.cd,L.react*(inView?1:1.8));   // reaction delay; FAIRNESS: much slower if he's behind you, so you get a chance to hear him
+   if(!RANGE()&&time-INTEL.t>3&&time-lastCall>2){lastCall=time;snd('call',Math.max(.3,1-d/14),Math.sin(wrapA(Math.atan2(b.y-P.y,b.x-P.x)-P.a)));spotted()}}
+  if(sees&&!RANGE())reveal(P.x,P.y);                                              // squad comms: whoever sees you tells everyone
   b.t-=dt;if(b.t<=0){b.t=1.2+Math.random()*2;b.mode=Math.random()<.45?1:(Math.random()<.5?0:2);b.sd=Math.random()<.5?-1:1} // commit to a behaviour for a while
   let ang=Math.atan2(dy,dx),go=1;
   if(RANGE()){ang+=Math.PI/2*b.sd;go=.55}       // range targets: strafe side to side (direction flips every few seconds)
   else if(Math.hypot(b.x-10,b.y-10)>sr){ang=Math.atan2(10-b.y,10-b.x);b.hp-=3*dt;if(b.hp<=0){kill(b,false,false);continue}}
-  else if(!los)ang=steer(b,ang);              // hunt toward you around walls
-  else if(b.ty==1){}                          // rusher: charge straight in
-  else if(b.ty==3){if(d<6)ang+=Math.PI;else go=0} // marksman: keeps his distance, holds still to aim
-  else if(d<3)ang+=Math.PI;                   // too close: back away
-  else if(b.mode==1)ang+=Math.PI/2*b.sd;      // strafe
-  else if(b.mode==2||d<7)go=0;                // stop and aim
+  else{
+   b.stT+=dt;b.supp=Math.max(0,b.supp-dt*.5);
+   // under fire (hit or near misses): break off and get to cover. Rushers never take cover.
+   if(b.supp>.6&&b.ty!=1&&b.state!=='cover'){const c=findCover(b);if(c>=0){setState(b,'cover');setGoal(b,c);b.peek=true;b.wait=1.2+Math.random()*1.4;b.peekDur=1.6+Math.random()}b.supp=0}
+   if(sees&&b.state!=='cover')setState(b,'fight');
+   switch(b.state){
+   case'patrol': if(know()){setState(b,'hunt');break}
+    if(b.goal<0||b.stT>9||cellOf(b)===b.goal){setGoal(b,wander());b.stT=0}
+    ang=follow(b,b.f,ang);go=.55;break;                                         // walk, don't run
+   case'hunt': if(!know()){setState(b,'patrol');b.goal=-1;break}
+    ang=steer(b,ang);                                                           // follow the squad's intel around walls
+    if(Math.hypot(b.x-INTEL.x,b.y-INTEL.y)<1.2){setState(b,'patrol');b.goal=-1} // searched the spot: you're not there
+    break;
+   case'flank': if(cellOf(b)===b.goal||b.stT>10){setState(b,'hunt');break}
+    ang=follow(b,b.f,ang);go=1.15;break;
+   case'cover': ang=follow(b,b.f,ang);go=1.25;                                  // sprint to cover
+    if(cellOf(b)===b.goal){go=0;if((b.wait-=dt)<=0)setState(b,'hunt')}        // wait (reload / breathe), then go peek
+    break;
+   case'fight': if(!sees){setState(b,know()?'hunt':'patrol');break}
+    if(b.peek&&b.stT>b.peekDur){const c=findCover(b);if(c>=0){setState(b,'cover');setGoal(b,c);b.wait=1+Math.random()*1.4}break} // peeked long enough: back into cover
+    if(b.ty==1){}                                                               // rusher: charge straight in
+    else if(b.ty==3){if(d<6)ang+=Math.PI;else go=0}                             // marksman: keeps his distance, holds still to aim
+    else if(d<3)ang+=Math.PI;                                                   // too close: back away
+    else if(b.mode==1)ang+=Math.PI/2*b.sd;                                      // strafe
+    else if(b.mode==2||d<7)go=0;                                                // stop and aim
+   }}
   if(b.stg>0){b.stg-=dt;go=0}                 // staggered: stops and cannot shoot
   b.vx+=(Math.cos(ang)*go-b.vx)*ez(4,dt);b.vy+=(Math.sin(ang)*go-b.vy)*ez(4,dt);
   b.mv=Math.hypot(b.vx,b.vy);walk(b,b.vx*L.spd*b.sp*dt,b.vy*L.spd*b.sp*dt);
