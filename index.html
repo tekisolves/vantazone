@@ -54,7 +54,9 @@ html,body{margin:0;height:100%;background:#0a0f18;overflow:hidden;touch-action:n
 #bp{width:38px;height:38px;left:116px;top:12px;font-size:13px}
 #es b{color:var(--mint);font-size:22px}
 body.menu #hud,body.menu .btn{visibility:hidden}   /* menus show the live arena, not the HUD */
-@media (orientation:portrait){#rot{display:flex}}
+@media (orientation:portrait){body.touch #rot{display:flex}}   /* only phones need to rotate */
+body.desk .btn,body.desk #jb,body.desk #jk,body.desk #rb,body.desk #rk{display:none!important}   /* laptops use mouse + keyboard */
+#hint{font-size:12px;opacity:.75;letter-spacing:.05em}
 </style></head><body class="menu">
 <canvas id="view"></canvas>
 <div id="hud">
@@ -75,9 +77,9 @@ body.menu #hud,body.menu .btn{visibility:hidden}   /* menus show the live arena,
 <div id="fade"></div><div class="btn" id="bp">II</div><div class="btn" id="bs">SPRINT</div><div class="btn" id="br">RELOAD</div><div class="btn" id="bf">FIRE</div>
 
 <div class="screen" id="start"><h1>VANTA ZONE</h1>
- <p>Last one standing wins. Left thumb moves. Right thumb turns and looks: push further to turn faster. Hold FIRE, hold AIM to look down the scope. Listen for footsteps. Stay inside the storm ring. Eliminations drop ammo, med kits and armour plates.</p>
+ <p id="intro">Last one standing wins. Left thumb moves. Right thumb turns and looks: push further to turn faster. Hold FIRE, hold AIM to look down the scope. Listen for footsteps. Stay inside the storm ring. Eliminations drop ammo, med kits and armour plates.</p>
  <button class="go" id="lv" style="background:#2b2350;color:#e8f0ff;font-size:12px">MODE: TRAINING</button>
- <button class="go" id="deploy">DEPLOY</button></div>
+ <button class="go" id="deploy">DEPLOY</button><div id="hint"></div></div>
 <div class="screen" id="end"><h1 id="et">ELIMINATED</h1><p id="es"></p><button class="go" id="redo">REDEPLOY</button></div>
 <div class="screen" id="pause" style="display:none"><h1>PAUSED</h1><button class="go" id="resume">RESUME</button></div>
 <div class="screen" id="rot"><h1 style="font-size:28px">ROTATE PHONE</h1><p>Play in landscape.</p></div>
@@ -104,6 +106,11 @@ body.menu #hud,body.menu .btn{visibility:hidden}   /* menus show the live arena,
    =================================================================================================== */
 const $=id=>document.getElementById(id);
 const mm=$('mini'),m=mm.getContext('2d');
+// ============================== 0. DEVICE ==============================
+// Phone/tablet = touch controls, LOW quality, 30 FPS. Laptop/desktop = mouse + keyboard (or a PlayStation/Xbox pad), HIGH quality, 60 FPS.
+// A coarse pointer (a finger) is the reliable signal; screen size alone isn't (big phones, small laptops).
+const TOUCH=matchMedia('(pointer: coarse)').matches||(navigator.maxTouchPoints>0&&!matchMedia('(pointer: fine)').matches);
+const DESK=!TOUCH;document.body.classList.add(TOUCH?'touch':'desk');
 addEventListener('error',e=>{const d=document.createElement('div');d.style.cssText='position:fixed;left:0;top:0;right:0;z-index:99;background:#c00;color:#fff;font:11px monospace;padding:4px';d.textContent='ERR: '+e.message+' @'+e.lineno;document.body.appendChild(d)}); // shows any script error on screen
 
 // ============================== 1. MAP ==============================
@@ -146,35 +153,41 @@ const CONCRETE=0xb3aa9e,BORDER_CONC=0x968f86,WOOD=0xb8874f,WOOD_DARK=0x7a5532,AR
  GRASS=0x8ea064,PINE=[0x3e6b45,0x4b7d50],LEAF=[0x5a8a4a,0x6c9b55],BARK=0x6b4a33,ROCKC=0x9a9288,MTN=[0x7d86b8,0x9097c9];
 const CONTAINER_COLS=[0xb4553d,0x2f7c77,0xc98d36];        // terracotta, muted teal, ochre
 const cellColor=(x,y)=>{const t=cell(x,y);return t==1?(isBorder(x,y)?BORDER_CONC:CONCRETE):t==2?CONTAINER_COLS[GROUP[y*20+x]%3]:WOOD};
-const LV=[{n:6,hp:60,spd:.8,acc:.25,dmg:3,react:1.5,rate:1.6},{n:12,hp:100,spd:1.1,acc:.5,dmg:6,react:.8,rate:1}]; // 0 = Training, 1 = Standard
+const LV=[{n:10,hp:60,spd:.8,acc:.25,dmg:3,react:1.5,rate:1.6},{n:16,hp:100,spd:1.1,acc:.5,dmg:6,react:.8,rate:1}]; // 0 = Training, 1 = Standard
 let lvl=0;const DUR=()=>lvl?150:240;                              // storm length (s)
 // Seeded random numbers: the scenery is laid out the same way on every load.
 let seed=24601;const rnd=()=>(seed=seed*16807%2147483647)/2147483647,rr=(a,b)=>a+(b-a)*rnd();
 
 // ============================== 2. RENDERER, CAMERA, SKY ==============================
-const R=new THREE.WebGLRenderer({canvas:$('view'),antialias:false,powerPreference:'high-performance'}); // no anti-aliasing: expensive on weak GPUs
+const R=new THREE.WebGLRenderer({canvas:$('view'),antialias:DESK,powerPreference:'high-performance'}); // anti-aliasing only on laptops: too expensive for weak phone GPUs
 let pr=.6;R.setPixelRatio(pr);                                    // real value comes from applyQ(): starts low, auto-raises
 R.shadowMap.enabled=false;                                        // shadows are baked (see FAKE SHADOWS)
-const HAZE=0xe6d9c6,scene=new THREE.Scene();scene.background=new THREE.Color(HAZE);scene.fog=new THREE.Fog(HAZE,25,160); // warm haze = depth
+const HAZE=0xeed5b6,scene=new THREE.Scene();scene.background=new THREE.Color(HAZE);scene.fog=new THREE.Fog(HAZE,25,160); // warm haze = depth
 const cam=new THREE.PerspectiveCamera(72,1,.03,140);cam.rotation.order='YXZ';scene.add(cam);
 function size(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
 addEventListener('resize',size);size();
-{const g=new THREE.SphereGeometry(125,16,12),q=g.attributes.position,c=new Float32Array(q.count*3),hz=new THREE.Color(HAZE),mid=new THREE.Color(0xa9c3ea),zn=new THREE.Color(0x4a76c9),glow=new THREE.Color(0xfff0d2),t=new THREE.Color();
+{const g=new THREE.SphereGeometry(125,16,12),q=g.attributes.position,c=new Float32Array(q.count*3),hz=new THREE.Color(HAZE),mid=new THREE.Color(0xb4c3e2),zn=new THREE.Color(0x4a6cbc),glow=new THREE.Color(0xffd9a6),t=new THREE.Color();
  const sx=10/Math.hypot(10,6),sz=-6/Math.hypot(10,6);                        // sun direction on the horizon
  for(let i=0;i<q.count;i++){const y=q.getY(i)/125,k=Math.max(0,y),h=Math.hypot(q.getX(i),q.getZ(i))||1;
   if(k<.35)t.copy(hz).lerp(mid,Math.pow(k/.35,.8));else t.copy(mid).lerp(zn,(k-.35)/.65);
-  const g2=Math.pow(Math.max(0,(q.getX(i)*sx+q.getZ(i)*sz)/h),4)*(1-k);t.lerp(glow,g2*.6);  // warm glow toward the sun
+  const g2=Math.pow(Math.max(0,(q.getX(i)*sx+q.getZ(i)*sz)/h),4)*(1-k);t.lerp(glow,g2*.75);  // warm glow toward the sun
   c[i*3]=t.r;c[i*3+1]=t.g;c[i*3+2]=t.b}
  g.setAttribute('color',new THREE.BufferAttribute(c,3));const sky=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));sky.position.set(10,0,10);sky.renderOrder=-1;scene.add(sky)}
 
 // ============================== 3. LIGHT ==============================
 // The sun and sky fill only light MOVING things (enemies, your gun, pickups). Static scenery has the same light baked in.
-scene.add(new THREE.HemisphereLight(0xdfe8ff,0xb3a58f,.65)); // cool sky fill (shadows lean blue), warm bounce from the sand
-const sun=new THREE.DirectionalLight(0xfff1d6,.85);sun.position.set(20,24,4);sun.target.position.set(10,0,10);scene.add(sun,sun.target);
-const SKYC=new THREE.Color(0xdfe8ff),GNDC=new THREE.Color(0xb3a58f),SUNC=new THREE.Color(0xfff1d6).multiplyScalar(.85),LD=new THREE.Vector3(10,24,-6).normalize(); // LD = direction toward the sun
+scene.add(new THREE.HemisphereLight(0xd2deff,0xb3a58f,.62)); // cool sky fill (shadows lean blue), warm bounce from the sand
+const sun=new THREE.DirectionalLight(0xffdfb2,.95);sun.position.set(20,8.2,4);sun.target.position.set(10,0,10);scene.add(sun,sun.target);
+const SKYC=new THREE.Color(0xd2deff),GNDC=new THREE.Color(0xb3a58f),SUNC=new THREE.Color(0xffdfb2).multiplyScalar(.95),LD=new THREE.Vector3(10,8.2,-6).normalize(); // LD = direction toward the sun: low (35°), golden-hour light with long shadows
 // The same sum the GPU's Lambert light does (sky fill + sun * how much the face points at it), done once on the CPU.
-function shade(n,out){const d=Math.max(0,n.dot(LD));out.copy(GNDC).lerp(SKYC,.5*n.y+.5).multiplyScalar(.65);out.r+=SUNC.r*d;out.g+=SUNC.g*d;out.b+=SUNC.b*d;return out}
+function shade(n,out){const d=Math.max(0,n.dot(LD));out.copy(GNDC).lerp(SKYC,.5*n.y+.5).multiplyScalar(.62);out.r+=SUNC.r*d;out.g+=SUNC.g*d;out.b+=SUNC.b*d;return out}
 const bmat=(c,o)=>new THREE.MeshBasicMaterial(Object.assign({color:c},o));   // unlit (light already baked in)
+// RIM LIGHT: a faint cool light from behind, on moving things only. It outlines enemies' edges so they separate from the background.
+{const rim=new THREE.DirectionalLight(0x9fb8ff,.45);rim.position.set(0,6,16);rim.target.position.set(10,0,10);scene.add(rim,rim.target)}
+// SUN DISC + glow, sitting in the sky where the light comes from
+{const sp=new THREE.Vector3(10,0,10).addScaledVector(LD,112);
+ const disc=new THREE.Mesh(new THREE.IcosahedronGeometry(4.2,2),bmat(0xfff3da,{fog:false}));disc.position.copy(sp);scene.add(disc);
+ const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(11,2),bmat(0xffd9a0,{fog:false,transparent:true,opacity:.28,depthWrite:false}));halo.position.copy(sp);scene.add(halo)}
 
 // ============================== 4. SHAPE KIT ==============================
 const V3=THREE.Vector3,UPV=new V3(0,1,0);
@@ -271,6 +284,23 @@ function crates(x,y){ // two layers of four crates, slightly uneven like a real 
   for(const dy of[-.13,.13])world.add(STRAP,WOOD_DARK,{p:[px,py+dy,pz],r:[0,ry,0],k,ao:AO_BASE});
  }}
 for(let y=0;y<20;y++)for(let x=0;x<20;x++){const t=cell(x,y);if(t==1)concrete(x,y);else if(t==2)container(x,y);else if(t==3)crates(x,y)}
+// FLOOR MARKINGS: dashed lane paint inside the outer wall, oil stains and cracks. They break up the big floor and help you read distance.
+// Flat, so they never block movement or bullets.
+const DASH=cbox(.7,.006,.06,.002),CRACK=cbox(.45,.005,.014,.002);
+for(let i=1;i<19;i++)for(const[x,z,ry]of[[i+.5,1.4,0],[i+.5,18.6,0],[1.4,i+.5,Math.PI/2],[18.6,i+.5,Math.PI/2]])
+ if(!isWall(Math.floor(x),Math.floor(z)))world.add(DASH,0xd2a947,{p:[x,.01,z],r:[0,ry,0],ao:AO_FLOOR});
+for(let i=0;i<40;i++){const x=rr(1.5,18.5),z=rr(1.5,18.5);if(isWall(Math.floor(x),Math.floor(z)))continue;
+ if(i<16)world.add(DISC,0x8d857a,{p:[x,.008,z],s:[rr(.15,.45),1,rr(.12,.3)],r:[0,rnd()*6,0],k:rr(.85,1),ao:AO_FLOOR});      // stains
+ else world.add(CRACK,0x7d766c,{p:[x,.009,z],r:[0,rnd()*6,0],s:[rr(.6,1.4),1,1],ao:AO_FLOOR})}                               // cracks
+// ROOFTOP DETAIL: vents and AC units on containers give the skyline something to read.
+for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(cell(x,y)==2&&rnd()<.55){
+ const h=CELL_H[2];world.add(cbox(.34,.14,.24,.02),0x8b8e93,{p:[x+.5+rr(-.15,.15),h+.07,y+.5+rr(-.15,.15)],r:[0,rnd()*2,0],shadow:true});
+ if(rnd()<.5)world.add(cyl(.05,.05,.22,8),0x6f7277,{p:[x+.5+rr(-.3,.3),h+.11,y+.5+rr(-.3,.3)],smooth:true})}
+// FLOODLIGHT POLES on the outer wall: tall thin silhouettes against the sky, aimed at the middle.
+for(const[x,y]of[[0,0],[19,0],[0,19],[19,19],[10,0],[0,10],[19,10],[9,19]]){const h=wallH(x,y),cx=x+.5,cz=y+.5,ry=Math.atan2(10-cx,10-cz);
+ world.add(cyl(.035,.05,2.3,6),0x55585e,{p:[cx,h+1.15,cz],shadow:true,smooth:true});
+ world.add(cbox(.34,.14,.2,.02),0x3d4046,{p:[cx,h+2.32,cz],r:[.5,ry,0],shadow:true});
+ world.add(cbox(.28,.08,.02,.005),0xfff3d6,{p:[cx+Math.sin(ry)*.105,h+2.27,cz+Math.cos(ry)*.105],r:[.5,ry,0],k:1.7})}  // lamp face (bright)
 
 // Outside the arena: trees, rocks, grass. Placed in a ring around it, never inside.
 const outside=()=>{for(;;){const a=rr(0,6.283),r=rr(13,42),x=10+Math.cos(a)*r,z=10+Math.sin(a)*r;if(Math.abs(x-10)>11.2||Math.abs(z-10)>11.2)return[x,z]}};
@@ -283,6 +313,8 @@ for(let i=0;i<48;i++){const[x,z]=outside(),s=rr(.9,1.7);(rnd()<.6?pine:leafy)(x,
 for(let i=0;i<40;i++){const[x,z]=outside(),s=rr(.6,1.8);world.add(ROCK,ROCKC,{p:[x,.08*s,z],s:[.35*s,.22*s,.3*s],r:[rnd()*6,rnd()*6,rnd()*6],k:rr(.85,1.1),shadow:true,ao:AO_BASE})}
 for(let i=0;i<26;i++){const[x,z]=outside(),s=rr(1,3);world.add(DISC,GRASS,{p:[x,0,z],s:[s,1,s*rr(.6,1)],r:[0,rnd()*6,0],k:rr(.82,.9)})}             // darker grass patches
 for(let i=0;i<140;i++){const[x,z]=outside();world.add(TUFT,GRASS,{p:[x,.05,z],s:[.05,.12,.05],r:[rr(-.3,.3),rnd()*6,rr(-.3,.3)],k:rr(.85,1.15)})} // grass tufts
+for(let i=0;i<20;i++){const a=i/20*6.283+rr(-.1,.1),r=rr(48,62);                          // rolling hills fill the horizon
+ world.add(ico(1,1),GRASS,{p:[10+Math.cos(a)*r,-1.2,10+Math.sin(a)*r],s:[rr(9,15),rr(3,6),rr(9,15)],r:[0,rnd()*6,0],k:rr(.78,.92),smooth:true})}
 for(let i=0;i<14;i++){ // ring of low-poly mountains with snow caps
  const a=i/14*6.283,r=70+(i%3)*8,h=24+(i*7%13),w=11+(i%4)*2,mx=10+Math.cos(a)*r,mz=10+Math.sin(a)*r;
  world.add(new THREE.ConeGeometry(w,h,5),MTN[i%2],{p:[mx,h/2-1,mz],r:[0,i,0]});
@@ -291,10 +323,11 @@ scene.add(new THREE.Mesh(world.geometry(true),bmat(0xffffff,{vertexColors:true})
 {const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(SHADOW_TRIS,3));
  scene.add(new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x10142a,transparent:true,opacity:.55,depthWrite:false,side:THREE.DoubleSide,
   stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp})))}
+const CLOUDS=new THREE.Group();CLOUDS.position.set(10,0,10);scene.add(CLOUDS);   // turned slowly in draw(): the sky drifts
 {const sky=new Merger(); // clouds: a few flattened low-poly blobs, drawn without fog so they stay crisp
  for(let i=0;i<9;i++){const a=i/9*6.283+rr(-.3,.3),r=rr(45,70),x=10+Math.cos(a)*r,z=10+Math.sin(a)*r,y=rr(24,32),s=rr(3,5);
   for(let j=0;j<4;j++)sky.add(ico(1,1),0xffffff,{p:[x+(j-1.5)*s*.8,y+rr(-.4,.6)*s*.3,z+rr(-1,1)*s*.3],s:[s*rr(.7,1.1),s*.45,s*.8],r:[0,rnd()*6,0],k:rr(1.45,1.55),smooth:true})}
- scene.add(new THREE.Mesh(sky.geometry(true),bmat(0xffffff,{vertexColors:true,fog:false})))}
+ const cm=new THREE.Mesh(sky.geometry(true),bmat(0xffffff,{vertexColors:true,fog:false}));cm.position.set(-10,0,-10);CLOUDS.add(cm)}
 const ring=new THREE.Mesh(new THREE.CylinderGeometry(1,1,5,40,1,true),new THREE.MeshBasicMaterial({color:0xa879ff,transparent:true,opacity:.24,side:THREE.DoubleSide,depthWrite:false}));
 ring.position.set(10,2.5,10);scene.add(ring);
 
@@ -304,10 +337,11 @@ ring.position.set(10,2.5,10);scene.add(ring);
 // READABILITY: dark (low-value) uniforms against the light, warm world; every enemy shares ONE hostile red-orange accent.
 // The three kits are told apart by silhouette (backpack / no backpack / bulky armour) and uniform hue.
 const HOSTILE=0xff4a2e;
-const KIT=[ // 0 rifleman, 1 rusher (fast, shotgun, close range), 2 heavy (slow, armoured, machine gun)
+const KIT=[ // 0 rifleman, 1 rusher (fast, shotgun, close range), 2 heavy (slow, armoured, machine gun), 3 marksman (long range, laser sight)
  {uni:0x3b4457,vest:0x272d3a,gear:0x1e2129,helm:0x323a4a,acc:HOSTILE,scale:1},
  {uni:0x5b4d3f,vest:0x40362c,gear:0x2c2620,helm:0x4e4236,acc:HOSTILE,scale:.96},
- {uni:0x363d31,vest:0x262b22,gear:0x1c2019,helm:0x2c3227,acc:HOSTILE,scale:1.12}];
+ {uni:0x363d31,vest:0x262b22,gear:0x1c2019,helm:0x2c3227,acc:HOSTILE,scale:1.12},
+ {uni:0x4a4339,vest:0x332e27,gear:0x24211c,helm:0x3d372f,acc:HOSTILE,scale:1}];
 const GUN=0x1d2026,BOOT=0x2a2622,MASK=0x2b2f38,HIP=.36;     // HIP = hip-joint height; legs are 0.18 + 0.18 long
 const HELMET=new THREE.SphereGeometry(.064,8,4,0,Math.PI*2,0,Math.PI*.55);
 function upperGeo(t){const k=KIT[t],m=new Merger(),heavy=t==2,gx=.05,gy=.18; // coordinates are relative to the hips; +z is forward
@@ -323,10 +357,11 @@ function upperGeo(t){const k=KIT[t],m=new Merger(),heavy=t==2,gx=.05,gy=.18; // 
  if(heavy)for(const x of[-.13,.13])m.add(ico(.05,1),k.vest,{p:[x,.215,0],s:[1,.7,1],smooth:true}); // shoulder armour
  // the gun: stock at the shoulder, pointing forward
  m.add(cbox(.03,.055,t==1?.2:.18,.008),GUN,{p:[gx,gy,.12]});                          // receiver
- m.seg([gx,gy+.01,.21],[gx,gy+.01,t==1?.36:.34],t==1?.014:.009,GUN);                  // barrel
+ m.seg([gx,gy+.01,.21],[gx,gy+.01,[.34,.36,.34,.46][t]],t==1?.014:.009,GUN);           // barrel (the marksman's is long)
+ if(t==3)m.add(cyl(.017,.017,.1,8),GUN,{p:[gx,gy+.047,.13],r:[Math.PI/2,0,0],smooth:true}); // marksman's scope
  m.add(cbox(.03,.05,.09,.01),GUN,{p:[gx,gy-.01,0]});                                 // stock
  if(heavy)m.add(cbox(.06,.06,.06,.01),k.gear,{p:[gx-.02,gy-.05,.12]});               // machine-gun ammo box
- else if(t==0)m.add(cbox(.025,.07,.035,.006),GUN,{p:[gx,gy-.055,.11],r:[.25,0,0]});  // magazine
+ else if(t==0||t==3)m.add(cbox(.025,.07,.035,.006),GUN,{p:[gx,gy-.055,.11],r:[.25,0,0]});  // magazine
  // arms: shoulder -> elbow -> gloved hand (right hand on the grip, left under the barrel), bright armband near the shoulder
  const S={smooth:true},arm=(sh,el,ha)=>{m.seg(sh,el,.032,k.uni,{r2:.03,smooth:true});m.seg(el,ha,.028,k.uni,{r2:.025,smooth:true});m.add(ico(.026,1),k.gear,{p:ha,smooth:true});
   m.seg(sh,sh.map((v,i)=>v+(el[i]-v)*.35),.037,k.acc,S)};
@@ -345,12 +380,14 @@ function makeSoldier(t){
  const S=SOLDIER[t],G=new THREE.Group();G.rotation.order='YXZ';               // turn first, then tip (for falling)
  const upper=new THREE.Mesh(S.upper,BODYM);upper.position.y=HIP;G.add(upper);
  const vis=new THREE.Mesh(VISG,VIS0);vis.position.set(0,.292,.052);upper.add(vis); // amber visor turns red just before he fires
- const mf=new THREE.Mesh(MFG,MFM);mf.position.set(.05,.19,t==1?.39:.37);mf.visible=false;upper.add(mf); // muzzle flash
+ const mf=new THREE.Mesh(MFG,MFM);mf.position.set(.05,.19,[.37,.39,.37,.49][t]);mf.visible=false;upper.add(mf); // muzzle flash
  const legs=[-1,1].map(side=>{const th=new THREE.Mesh(S.thigh,BODYM);th.position.set(.055*side,HIP,0);
   const sh=new THREE.Mesh(S.shin,BODYM);sh.position.y=-.18;th.add(sh);G.add(th);return{th,sh}});
  const bl=new THREE.Mesh(BLOBG,BLOBM);bl.position.y=.012;G.add(bl);
  G.scale.setScalar(KIT[t].scale);
- return{G,upper,vis,mf,legs,meshes:[upper,legs[0].th,legs[0].sh,legs[1].th,legs[1].sh]}}
+ let laser=null;if(t==3){laser=new THREE.Mesh(LASERG,LASERM);laser.visible=false;scene.add(laser)}  // marksman's laser sight (warns you before he fires)
+ return{G,upper,vis,mf,legs,laser,meshes:[upper,legs[0].th,legs[0].sh,legs[1].th,legs[1].sh]}}
+const LASERG=new THREE.BoxGeometry(.01,.01,1),LASERM=bmat(0xff2a2a,{transparent:true,opacity:.6,depthWrite:false});
 
 // ============================== 7. NATURAL MOVEMENT ==============================
 const wrapA=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -442,9 +479,19 @@ function updateSparks(dt){if(spOn<=0)return;spOn-=dt;
  for(let j=0;j<SPN;j++){if(spLife[j]<=0)continue;spLife[j]-=dt;if(spLife[j]<=0){spPos[j*3+1]=-50;continue}
   spVel[j*3+1]-=6*dt;spPos[j*3]+=spVel[j*3]*dt;spPos[j*3+1]+=spVel[j*3+1]*dt;spPos[j*3+2]+=spVel[j*3+2]*dt}
  spGeo.attributes.position.needsUpdate=true}
+// Dust puffs where bullets hit walls/floor: 24 soft points, slower and bigger than sparks (one more draw call)
+const DN=24,duPos=new Float32Array(DN*3).fill(-50),duVel=new Float32Array(DN*3),duLife=new Float32Array(DN);let duI=0,duOn=0;
+const duGeo=new THREE.BufferGeometry();duGeo.setAttribute('position',new THREE.BufferAttribute(duPos,3));
+const dustPts=new THREE.Points(duGeo,new THREE.PointsMaterial({color:0xd8ccb6,size:7,sizeAttenuation:false,transparent:true,opacity:.55,depthWrite:false}));dustPts.frustumCulled=false;scene.add(dustPts);
+function dust(p,n){for(let i=0;i<n;i++){const j=duI++%DN;duPos[j*3]=p.x;duPos[j*3+1]=p.y;duPos[j*3+2]=p.z;
+ duVel[j*3]=(Math.random()-.5)*.6;duVel[j*3+1]=.2+Math.random()*.4;duVel[j*3+2]=(Math.random()-.5)*.6;duLife[j]=.35+Math.random()*.25}duOn=.7}
+function updateDust(dt){if(duOn<=0)return;duOn-=dt;
+ for(let j=0;j<DN;j++){if(duLife[j]<=0)continue;duLife[j]-=dt;if(duLife[j]<=0){duPos[j*3+1]=-50;continue}
+  duPos[j*3]+=duVel[j*3]*dt;duPos[j*3+1]+=duVel[j*3+1]*dt;duPos[j*3+2]+=duVel[j*3+2]*dt}
+ duGeo.attributes.position.needsUpdate=true}
 
 // ============================== 11. SOUND (all generated, no files) ==============================
-let AC,MG,NB,af=1,gyS=0,ql=0,fid=null,showF=0,sens=1,shake=1;   // audio ctx, master gain, noise buffer; options: auto-fire, gyro, quality (LOW default), FPS counter, look speed, screen shake
+let AC,MG,NB,af=TOUCH?1:0,gyS=0,ql=DESK?2:0,fid=null,showF=0,sens=1,shake=1;   // audio ctx, master gain, noise buffer; options: auto-fire (phones), gyro, quality (LOW on phones, HIGH on laptops), FPS counter, look speed, screen shake
 const SENS=[.75,1,1.3],SENSL=['LOW','MED','HIGH'];
 let X,D;                                          // the context + output the synth writes into (live speaker, or an offline recorder while baking)
 const SHOTS=[],ESHOTS=[],STEPS=[];                // pre-recorded variants
@@ -479,6 +526,7 @@ function snd(n,v,pan){if(!AC&&!ac())return;if(AC.state!=='running')return;const 
  case'hurt':tn(t,110,45,.22,'sine',.5);nz(t,.18,'lowpass',700,.6,.35);break;
  case'reload':nz(t,.04,'bandpass',2200,3,.25);nz(t+.55,.05,'bandpass',1500,3,.3);nz(t+1.3,.04,'bandpass',2400,3,.3);break;
  case'pick':tn(t,660,990,.09,'triangle',.1);tn(t+.07,990,1320,.1,'triangle',.08);break
+ case'lock':tn(t,1500,1500,.07,'square',.06*v,pan);tn(t+.1,1500,1500,.07,'square',.06*v,pan);break
  case'beat':tn(t,70,45,.12,'sine',.5);tn(t+.17,64,40,.12,'sine',.35);break        // low-health heartbeat
  case'streak':tn(t,520,780,.12,'triangle',.12);tn(t+.1,780,1170,.16,'triangle',.12);break}}
 const vib=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
@@ -500,13 +548,13 @@ const MT=[2,3]; // max enemies shooting at once (Training, Standard)
 let P,bots=[],time=0,over=true,fps=60,fc=0,ft=0;
 const stormR=()=>14-10.5*Math.min(1,time/DUR());                   // storm ring shrinks over time
 function reset(){
- bots.forEach(b=>scene.remove(b.G));dying.forEach(d=>scene.remove(d.G));dying.length=0;dgT=0;items.forEach(i=>scene.remove(i.G));bots=[];items=[];
+ bots.forEach(b=>{scene.remove(b.G);if(b.laser)scene.remove(b.laser)});dying.forEach(d=>scene.remove(d.G));dying.length=0;dgT=0;items.forEach(i=>scene.remove(i.G));bots=[];items=[];
  P={x:10,y:17.5,a:-Math.PI/2,pit:0,vx:0,vy:0,spd:0,hp:100,ar:150,ammo:30,res:120,rel:0,cd:0,kick:0,bob:0,kills:0,hm:0,bl:0,rc:0,az:0,tg:null,spK:0,relK:0,
   tr:0,shots:0,hits:0,heads:0,streak:0,lastKill:-9,hb:0,stormMsg:0};   // tr = screen-shake 'trauma'; the rest are end-of-match stats
  const open=()=>{let x,y;do{x=1.5+Math.random()*17;y=1.5+Math.random()*17}while(cell(x,y));return[x,y]};
  for(let i=0;i<LV[lvl].n;i++){let p;do{p=open()}while(Math.hypot(p[0]-P.x,p[1]-P.y)<6);
-  const ty=i%5==3?1:(i%5==4?2:0),r=makeSoldier(ty),yaw=Math.random()*6.283;scene.add(r.G);
-  bots.push(Object.assign(r,{x:p[0],y:p[1],hp:LV[lvl].hp*[1,.55,2.2][ty],ty,sc:KIT[ty].scale,sp:[1,1.7,.6][ty],stg:0,tk:false,tkT:0,cd:1+Math.random()*2,ph:Math.random()*6,
+  const ty=[0,0,1,0,2,3][i%6],r=makeSoldier(ty),yaw=Math.random()*6.283;scene.add(r.G);
+  bots.push(Object.assign(r,{x:p[0],y:p[1],hp:LV[lvl].hp*[1,.55,2.2,.8][ty],ty,sc:KIT[ty].scale,sp:[1,1.7,.6,.8][ty],stg:0,tk:false,tkT:0,cd:1+Math.random()*2,ph:Math.random()*6,
    hit:0,t:0,mode:0,sd:1,vx:0,vy:0,mv:0,seen:0,los:false,fl:false,tg:false,yaw,face:yaw,mvA:yaw,phase:Math.random()*6,turnRate:0,lean:0,kick:{x:0,v:0},mfT:0,dt:0}))}
  for(let i=0;i<7;i++){const p=open();spawnItem(p[0],p[1],i%3)}
  time=0;over=false;$('feed').innerHTML='';
@@ -521,7 +569,7 @@ function finish(win){over=true;const place=win?1:bots.filter(b=>b.hp>0).length+1
  $('es').innerHTML=`<b>#${place}</b> of ${LV[lvl].n+1}<br>Kills ${P.kills} · Headshots ${P.heads} · Accuracy ${acc}% · ${Math.floor(time)}s`;
  $('end').style.display='flex';$('low').style.opacity=0;document.body.classList.add('menu')}
 function feed(t){const d=document.createElement('div');d.textContent=t;$('feed').appendChild(d);setTimeout(()=>d.remove(),3000)}
-function kill(b,head,byPlayer){b.tk=false;b.vis.material=VIS2;b.mf.visible=false;b.meshes.forEach(o=>o.material=BODYM);b.dt=0;dying.push(b);
+function kill(b,head,byPlayer){b.tk=false;b.G.visible=true;if(b.laser)b.laser.visible=false;b.vis.material=VIS2;b.mf.visible=false;b.meshes.forEach(o=>o.material=BODYM);b.dt=0;dying.push(b);
  if(byPlayer){P.kills++;snd('kill');feed((head?'Headshot! ':'')+'You eliminated Operator '+(Math.random()*90+10|0));
   P.streak=time-P.lastKill<4?P.streak+1:1;P.lastKill=time;                     // kill streaks (within 4 s of each other)
   if(P.streak>1){banner(['','','DOUBLE KILL','TRIPLE KILL'][P.streak]||'RAMPAGE');snd('streak')}}
@@ -559,7 +607,7 @@ function fire(){
   best.stg=Math.max(best.stg,(head?.45:.18)*(best.ty==2?.4:1));best.cd=Math.max(best.cd,head?.8:.35);  // hit = stagger
   P.hm=.15;const h=$('hm');h.style.borderColor=head?'#ffb84d':'#fff';h.classList.add('on');
   if(best.hp<=0){h.style.borderColor='#ff3050';P.hm=.35;kill(best,head,true)}}      // red marker = confirmed kill
- else if(floorT<wallT||end.y<wallH(Math.floor(end.x+hx*.02),Math.floor(end.z+hy*.02)))spark(end,6); // sparks where the bullet hits floor or wall (not over the top)
+ else if(floorT<wallT||end.y<wallH(Math.floor(end.x+hx*.02),Math.floor(end.z+hy*.02))){spark(end,5);dust(end,3)} // sparks + dust where the bullet hits floor or wall (not over the top)
 }
 
 // ============================== 15. INPUT ==============================
@@ -569,7 +617,7 @@ const ez=(k,dt)=>1-Math.exp(-k*dt);               // frame-rate independent smoo
 const _d=new V3(),_m=new V3(),_e=new V3();        // reused vectors: zero garbage per shot
 const joy={id:null,x:0,y:0,dx:0,dy:0},look={id:null,x0:0,y0:0,dx:0,dy:0,vx:0,vy:0},held={f:0,s:0},keys={};
 const T=$('touch'),jb=$('jb'),jk=$('jk'),rb=$('rb'),rk=$('rk');
-T.addEventListener('pointerdown',e=>{T.setPointerCapture(e.pointerId);
+T.addEventListener('pointerdown',e=>{if(DESK)return;T.setPointerCapture(e.pointerId);
  if(e.clientX<innerWidth*.45&&joy.id===null){joy.id=e.pointerId;joy.x=e.clientX;joy.y=e.clientY;
   jb.style.cssText=`display:block;left:${joy.x-50}px;top:${joy.y-50}px`;jk.style.cssText=`display:block;left:${joy.x-22}px;top:${joy.y-22}px`}
  else if(look.id===null){look.id=e.pointerId;look.x0=e.clientX;look.y0=e.clientY;
@@ -592,7 +640,24 @@ hold('bf','f',()=>{fbuf=.12}); // tapping FIRE is remembered for 0.12s
 hold('bs','s');hold('br',null,reload);
 const ba=document.createElement('div');ba.className='btn';ba.id='ba';ba.textContent='AIM';ba.style.cssText='width:58px;height:58px;right:130px;bottom:100px';document.body.appendChild(ba);hold('ba','a'); // hold to look down the scope
 let gyY=0,gyP=0,gyN=0;addEventListener('devicemotion',e=>{const r=e.rotationRate;if(!r||r.beta==null)return;gyN++;const an=(screen.orientation&&screen.orientation.angle)||window.orientation||0,sg=(an===270||an===-90)?-1:1;gyY=(r.beta||0)*sg;gyP=(r.gamma||0)*sg}); // landscape: yaw=beta, pitch=gamma
-addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key===' ')fbuf=.12;if(e.key==='r')reload()});addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key===' ')fbuf=.12;if(e.key==='r'||e.key==='R')reload();if(e.key==='Shift')held.s=1});
+addEventListener('keyup',e=>{if(e.key==='Shift')held.s=0});
+// LAPTOP: mouse look via pointer lock (the cursor is captured while you play; Esc releases it and pauses)
+const LOCKED=()=>document.pointerLockElement===$('view');
+document.addEventListener('mousemove',e=>{if(!LOCKED()||over||paused)return;const k=.0022*SENS[sens]*(P.az>.5?.55:1);
+ P.a+=e.movementX*k;P.pit=Math.max(-.6,Math.min(.6,P.pit-e.movementY*k))});
+document.addEventListener('mousedown',e=>{if(!LOCKED())return;if(e.button===0){held.f=1;fbuf=.12}if(e.button===2)held.a=1});
+document.addEventListener('mouseup',e=>{if(e.button===0)held.f=0;if(e.button===2)held.a=0});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('pointerlockchange',()=>{if(DESK&&!LOCKED()&&!over)pause()});
+const lockMouse=()=>{if(DESK)try{const r=$('view').requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(e){}};
+// GAMEPAD (PlayStation / Xbox, standard layout): left stick move, right stick look, R2 fire, L2 aim, L3 sprint, Square/X reload, Options pause
+const pad={x:0,y:0,lx:0,ly:0,f:0,a:0,s:0,on:0,prev:[]};
+function readPad(){const g=navigator.getGamepads?[...navigator.getGamepads()].find(p=>p&&p.connected):null;if(!g){pad.on=0;return}pad.on=1;
+ const dz=v=>Math.abs(v)<.12?0:v,b=i=>!!(g.buttons[i]&&g.buttons[i].pressed),edge=i=>b(i)&&!pad.prev[i];
+ pad.x=dz(g.axes[0]);pad.y=dz(g.axes[1]);pad.lx=dz(g.axes[2]);pad.ly=dz(g.axes[3]);pad.f=b(7);pad.a=b(6);if(b(10))pad.s=1;if(Math.hypot(pad.x,pad.y)<.3)pad.s=0;
+ if(edge(2))reload();if(edge(9)){over?(document.getElementById('start').style.display!='none'&&start()):pause()}
+ pad.prev=g.buttons.map(x=>x.pressed)}addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
 
 // ============================== 16. UPDATE (one fixed 1/60 s step) ==============================
 function walk(o,dx,dy){const r=.22;
@@ -601,7 +666,8 @@ function shootFx(b,d,ha){b.kick.v-=3;b.mf.visible=true;b.mf.rotation.z=Math.rand
  b.mf.getWorldPosition(_m);tracer(_m,_e.set(P.x,.5,P.y));snd('eshot',Math.max(.15,1-d/14),Math.sin(ha))}
 function update(dt){
  fn++;time+=dt;if((dgT-=dt)<=0){dgT=.3;flood()}P.bl=Math.max(0,P.bl-dt*2.5);{const r=P.rc*Math.min(1,dt*6);P.pit-=r;P.rc-=r} // recoil recovery
- P.az+=((held.a?1:0)-P.az)*ez(12,dt);P.tr=Math.max(0,P.tr-dt*1.8);   // shake fades out
+ readPad();
+ P.az+=((held.a||pad.a?1:0)-P.az)*ez(12,dt);P.tr=Math.max(0,P.tr-dt*1.8);   // shake fades out
  if(gyS&&gyN){const f=gyS-1,k=Math.PI/180,yy=Math.abs(gyY)>.4?gyY:0,pp=Math.abs(gyP)>.4?gyP:0; // gyro: rotation rate (deg/s), deadzone, flip options
   P.a+=yy*(f&1?-1:1)*k*dt*(1-.5*P.az);P.pit=Math.max(-.6,Math.min(.6,P.pit+pp*(f&2?-1:1)*k*dt*(1-.5*P.az)))}
  P.cd-=dt;P.kick=Math.max(0,P.kick-dt*9);P.hm-=dt;if(P.hm<=0)$('hm').classList.remove('on');
@@ -609,27 +675,27 @@ function update(dt){
  // Console-style camera: the right stick sets turn SPEED (deadzone + response curve + ease-in)
  const crv=v=>Math.sign(v)*Math.pow(Math.max(0,Math.abs(v)-.08)/.92,1.7);
  let slow=((held.f||held.f2)?.7:1)*(1-.5*P.az),aim=false;
- {let tgt=null,bs=9,tda=0,td=1;const cone=lvl?.14:.22; // aim assist: nearest-to-crosshair target (current one is "sticky"), friction + gentle pull
+ {let tgt=null,bs=9,tda=0,td=1;const cone=(lvl?.14:.22)*(DESK&&!pad.on?.5:1);   // a mouse is precise: lighter assist on laptops // aim assist: nearest-to-crosshair target (current one is "sticky"), friction + gentle pull
   for(const b of bots){if(b.hp<=0)continue;const sx=b.x-P.x,sy=b.y-P.y,d=Math.hypot(sx,sy);if(d>13)continue;
    let da=Math.atan2(sy,sx)-P.a;da=Math.atan2(Math.sin(da),Math.cos(da));const ad=Math.abs(da)*(b===P.tg?.6:1);
    if(ad<cone&&ad<bs){cast(P.x,P.y,sx/d,sy/d);if(RD>d){bs=ad;tgt=b;tda=da;td=d}}}
   P.tg=tgt;
   if(tgt){slow*=lvl?.55:.4;if(af&&Math.abs(tda)<(lvl?.035:.05)&&td<(lvl?8:12))aim=true; // auto-fire: target dead-centre (range-capped in Standard)
-   if(look.id!==null||held.f||held.f2){P.a+=tda*dt*(lvl?2.2:4)*(1-Math.min(1,Math.abs(look.dx)));P.pit+=(Math.atan2(.45-.6,td)-P.pit)*dt*2}}}
+   if((look.id!==null||held.f||held.f2||pad.f)&&!(DESK&&!pad.on)){P.a+=tda*dt*(lvl?2.2:4)*(1-Math.min(1,Math.abs(look.dx)));P.pit+=(Math.atan2(.45-.6,td)-P.pit)*dt*2}}}
  slow*=SENS[sens];                                // LOOK option: sensitivity
- look.vx+=(crv(look.dx)*2.6*slow-look.vx)*ez(18,dt);
- look.vy+=(crv(look.dy)*.9*slow-look.vy)*ez(18,dt);
+ look.vx+=(crv(Math.max(-1,Math.min(1,look.dx+pad.lx)))*2.6*slow-look.vx)*ez(18,dt);
+ look.vy+=(crv(Math.max(-1,Math.min(1,look.dy+pad.ly)))*.9*slow-look.vy)*ez(18,dt);
  P.a+=look.vx*dt;P.pit=Math.max(-.6,Math.min(.6,P.pit-look.vy*dt));
  // Movement: velocity glides toward the stick's target velocity (fast start, hard braking on reverse, gentle glide on release)
- let fw=-joy.dy+(keys.w?1:0)-(keys.s?1:0),st=joy.dx+(keys.d?1:0)-(keys.a?1:0),l=Math.hypot(fw,st);
+ let fw=-joy.dy-pad.y+(keys.w?1:0)-(keys.s?1:0),st=joy.dx+pad.x+(keys.d?1:0)-(keys.a?1:0),l=Math.hypot(fw,st);
  if(l<.1){fw=st=l=0}else{const sc=Math.min(1,(l-.1)/.9)/l;fw*=sc;st*=sc;l=Math.min(1,l*sc)}
- const top=held.s?3.4:2.2,c=Math.cos(P.a),sn=Math.sin(P.a),tx=(c*fw-sn*st)*top,ty=(sn*fw+c*st)*top;
+ const sprint=held.s||pad.s,top=sprint?3.4:2.2,c=Math.cos(P.a),sn=Math.sin(P.a),tx=(c*fw-sn*st)*top,ty=(sn*fw+c*st)*top;
  const k=l>0?((P.vx*tx+P.vy*ty)<0?34:18):9,e=ez(k,dt);
  P.vx+=(tx-P.vx)*e;P.vy+=(ty-P.vy)*e;
  if(l===0&&Math.abs(P.vx)+Math.abs(P.vy)<.02)P.vx=P.vy=0;
  const pb=P.bob;walk(P,P.vx*dt,P.vy*dt);P.spd=Math.hypot(P.vx,P.vy);if(P.spd>.1)P.bob+=dt*P.spd*4.1;
  if(P.spd>.6&&Math.floor(pb/Math.PI)!==Math.floor(P.bob/Math.PI))snd('step',held.s?.35:.22);   // your own footsteps
- fbuf-=dt; if(held.f||held.f2||keys[' ']||fbuf>0||aim)fire();
+ fbuf-=dt; if(held.f||held.f2||pad.f||keys[' ']||fbuf>0||aim)fire();
  if(P.rel>0){P.rel-=dt;if(P.rel<=0){const n=Math.min(30-P.ammo,P.res);P.ammo+=n;P.res-=n}}
  // storm
  const sr=stormR();if(Math.hypot(P.x-10,P.y-10)>sr)P.hp-=(2+time/40)*dt;if(P.hp<=0&&!over)finish(false);
@@ -643,7 +709,11 @@ function update(dt){
  // enemies
  let tks=0;for(let i=0;i<bots.length;i++)if(bots[i].tk&&bots[i].hp>0)tks++;
  for(let bi=0;bi<bots.length;bi++){const b=bots[bi];if(b.hp<=0)continue;b.hit=Math.max(0,b.hit-dt);
-  const dx=P.x-b.x,dy=P.y-b.y,d=Math.hypot(dx,dy)||1;if((fn+bi)%3==0){cast(b.x,b.y,dx/d,dy/d);b.los=RD>d} // line of sight every 3rd step per enemy
+  const dx=P.x-b.x,dy=P.y-b.y,d=Math.hypot(dx,dy)||1;if((fn+bi)%3==0){cast(b.x,b.y,dx/d,dy/d);b.los=RD>d;                        // line of sight every 3rd step per enemy
+   // OCCLUSION CULLING: an enemy hidden behind walls isn't drawn at all. Most enemies are hidden most of the time, so this is the
+   // biggest saving on a weak phone. Two extra rays to his left and right edges stop half-visible enemies from popping in late.
+   let v=b.los||d<2;if(!v)for(const sg of[-1,1]){const tx=b.x-dy/d*.3*sg-P.x,ty=b.y+dx/d*.3*sg-P.y,td=Math.hypot(tx,ty);cast(P.x,P.y,tx/td,ty/td);if(RD>td){v=true;break}}
+   b.G.visible=v}
   const los=b.los,L=LV[lvl];
   if(!los)b.seen=0;else if(!b.seen){b.seen=1;b.cd=Math.max(b.cd,L.react)}  // reaction delay: no instant snap-shots
   b.t-=dt;if(b.t<=0){b.t=1.2+Math.random()*2;b.mode=Math.random()<.45?1:(Math.random()<.5?0:2);b.sd=Math.random()<.5?-1:1} // commit to a behaviour for a while
@@ -651,6 +721,7 @@ function update(dt){
   if(Math.hypot(b.x-10,b.y-10)>sr){ang=Math.atan2(10-b.y,10-b.x);b.hp-=3*dt;if(b.hp<=0){kill(b,false,false);continue}}
   else if(!los)ang=steer(b,ang);              // hunt toward you around walls
   else if(b.ty==1){}                          // rusher: charge straight in
+  else if(b.ty==3){if(d<6)ang+=Math.PI;else go=0} // marksman: keeps his distance, holds still to aim
   else if(d<3)ang+=Math.PI;                   // too close: back away
   else if(b.mode==1)ang+=Math.PI/2*b.sd;      // strafe
   else if(b.mode==2||d<7)go=0;                // stop and aim
@@ -660,8 +731,10 @@ function update(dt){
   if(b.tk){b.tkT-=dt;if(b.tkT<=0||!los||b.stg>0){b.tk=false;tks--}} // attack tokens: only a few enemies may shoot at once
   else if(b.ty!=1&&los&&b.stg<=0&&b.cd<=.3&&tks<MT[lvl]){b.tk=true;tks++;b.tkT=.9+Math.random()*.9}
   const ha=Math.atan2(b.y-P.y,b.x-P.x)-P.a;   // his direction relative to your view (for sound panning / damage arc)
-  if(los&&d<12&&!over&&b.stg<=0){
+  if(los&&d<(b.ty==3?17:12)&&!over&&b.stg<=0){
    if(b.ty==1){if(d<1.3){b.cd-=dt;if(b.cd<=0){b.cd=.7;shootFx(b,d,ha);hurt(L.dmg*1.4,ha)}}} // rusher: close-range shotgun
+   else if(b.ty==3){b.cd-=dt;if(b.cd<=0&&b.tk){b.cd=(1.8+Math.random())*L.rate;shootFx(b,d,ha);  // marksman: slow, hard-hitting, accurate
+    if(Math.random()<L.acc+.15-d*.01)hurt((L.dmg+Math.random()*3)*2.2,ha)}}
    else{b.cd-=dt;if(b.cd<=0&&b.tk){b.cd=(.5+Math.random()*.9)*L.rate*(b.ty==2?1.4:1);shootFx(b,d,ha);
     if(Math.random()<L.acc-d*.02)hurt((L.dmg+Math.random()*3)*(b.ty==2?1.5:1),ha)}}}
   // facing: at you during a fight, otherwise where he is walking
@@ -669,6 +742,10 @@ function update(dt){
   if(b.mv>.05)b.mvA=Math.atan2(b.vx,b.vy);
   if(animate(b,dt)&&d<9)snd('step',(1-d/9)*.5,Math.sin(ha));   // footsteps you can hear (and locate) through walls
   if(b.mf.visible&&(b.mfT-=dt)<=0)b.mf.visible=false;
+  if(b.laser){const on=b.tk&&los&&b.cd<1.4&&!over;                       // laser sight: on for ~1.4 s before each shot
+   if(on&&!b.laser.visible)snd('lock',Math.max(.2,1-d/18),Math.sin(ha));   // a lock-on beep tells you which way to look
+   b.laser.visible=on;if(on){b.mf.getWorldPosition(_m);_e.set(P.x,.5,P.y);_e.lerp(_m,Math.min(.9,.45/Math.max(.5,d)));  // stop short of your face so it stays a thin line
+    b.laser.position.copy(_m).lerp(_e,.5);b.laser.scale.z=_m.distanceTo(_e);b.laser.lookAt(_e)}}
   const tg=(b.tk&&b.cd<.25)||(b.ty==1&&d<2.2);if(tg!==b.tg){b.tg=tg;b.vis.material=tg?VIS1:VIS0} // visor warns you of the shot
   if((b.hit>0)!==b.fl){b.fl=b.hit>0;const mt=b.fl?BODYF:BODYM;b.meshes.forEach(o=>o.material=mt)}}
  for(let i=dying.length-1;i>=0;i--)if(!animateDeath(dying[i],dt)){scene.remove(dying[i].G);dying.splice(i,1)}
@@ -706,7 +783,7 @@ function draw(dt,al){
  VM.rotation.set(P.kick*.05-.35*P.spK-.25*P.relK,.45*P.spK,.5*P.relK);flash.visible=P.kick>.6;
  const sr=stormR();ring.scale.set(sr,1,sr);
  for(const t of tracers)if(t.l>0){t.l-=dt;if(t.l<=0)t.m.visible=false}
- updateSparks(dt);
+ updateSparks(dt);updateDust(dt);CLOUDS.rotation.y+=dt*.004;
  R.render(scene,cam);if(dn%3==0)minimap(); // radar ~10x/sec
 }
 const WC=document.createElement('canvas');WC.width=WC.height=100;(()=>{const w=WC.getContext('2d');for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(cell(x,y)){w.fillStyle='#'+cellColor(x,y).toString(16).padStart(6,'0');w.fillRect(x*5,y*5,5,5)}})(); // walls drawn once
@@ -735,7 +812,8 @@ let mT=0,mF=0;
 function menuView(dt){mT+=dt;if(mF^=1)return;
  const a=mT*.08;cam.position.set(10+Math.cos(a)*10.5,2.6,10+Math.sin(a)*10.5);cam.lookAt(10,.3,10);VM.visible=false;
  if(cam.fov!==72){cam.fov=72;cam.updateProjectionMatrix()}
- for(const b of bots)if(b.hp>0){b.mv=0;animate(b,dt*2);b.G.position.x=b.x;b.G.position.z=b.y}
+ for(const b of bots)if(b.hp>0){b.mv=0;animate(b,dt*2);b.G.visible=true;b.G.position.x=b.x;b.G.position.z=b.y}
+ CLOUDS.rotation.y+=dt*.008;
  R.render(scene,cam)}
 // Auto resolution, checked every 2 s: below 85% of the cap -> 0.1 lower (and that becomes the ceiling); at the cap twice -> 0.1 higher.
 function autoRes(q){const hi=Math.min(window.devicePixelRatio||1,q.hi),lo=Math.min(q.lo,hi);
@@ -748,7 +826,8 @@ function start(){ac();reset();snap();
  const f=$('fade');f.style.transition='none';f.style.opacity=1;requestAnimationFrame(()=>{f.style.transition='';f.style.opacity=0});banner('DROP IN'); // fade in + intro banner
  document.body.classList.remove('menu');
  if(gyS&&!gyN)setTimeout(()=>{if(!gyN)feed('Gyro unavailable here')},1500);['start','end','pause'].forEach(i=>$(i).style.display='none');
- try{document.documentElement.requestFullscreen().then(()=>screen.orientation.lock('landscape')).catch(()=>{})}catch(e){}}
+ if(DESK)lockMouse();
+ else try{document.documentElement.requestFullscreen().then(()=>screen.orientation.lock('landscape')).catch(()=>{})}catch(e){}}
 $('deploy').onclick=start;$('redo').onclick=start;
 // Pause when you leave the app: stops the match, mutes sound, releases any stuck thumbs.
 function clearInput(){joy.id=look.id=fid=null;joy.dx=joy.dy=look.dx=look.dy=look.vx=look.vy=0;held.f=held.s=held.a=held.f2=0;fbuf=0;
@@ -756,7 +835,7 @@ function clearInput(){joy.id=look.id=fid=null;joy.dx=joy.dy=look.dx=look.dy=look
 function pause(){if(over||paused)return;paused=1;clearInput();$('pause').style.display='flex';document.body.classList.add('menu');try{AC&&AC.suspend()}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
 $('bp').addEventListener('pointerdown',e=>{e.preventDefault();pause()});   // on-screen pause button
-$('resume').onclick=()=>{paused=0;$('pause').style.display='none';document.body.classList.remove('menu');ac();acc=0;fc=ft=0;last=performance.now()};
+$('resume').onclick=()=>{lockMouse();paused=0;$('pause').style.display='none';document.body.classList.remove('menu');ac();acc=0;fc=ft=0;last=performance.now()};
 // Options (cloned from the MODE button so they match); saved on the phone
 const opts=document.createElement('div');opts.id='opts';opts.style.cssText='display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:560px';opts.appendChild($('lv'));$('start').appendChild(opts);
 const mkb=id=>{const b=$('lv').cloneNode(false);b.id=id;opts.appendChild(b);return b};
@@ -767,6 +846,10 @@ const sv=()=>{try{localStorage.vz=JSON.stringify({v:5,af,gyS,ql,lvl,showF,sens,s
 function applyQ(){const q=QS[ql],hi=Math.min(window.devicePixelRatio||1,q.hi);pr=Math.min(q.st,hi);ceil=9;good=0;R.setPixelRatio(pr);size()}
 try{const o=JSON.parse(localStorage.vz||'{}');if(o.af!==undefined)af=o.af;if(o.gyS!==undefined)gyS=o.gyS;if(o.lvl!==undefined)lvl=o.lvl;
  if(o.v===5){if(o.ql!==undefined)ql=o.ql;showF=o.showF|0;if(o.sens!==undefined)sens=o.sens;if(o.shake!==undefined)shake=o.shake}}catch(e){}
+if(DESK){bGy.style.display='none';                 // no gyro on laptops
+ $('intro').textContent='Last one standing wins. Listen for footsteps, watch for red visors and laser sights, stay inside the storm. Eliminations drop ammo, med kits and armour.';
+ $('hint').textContent='WASD move · Mouse look · Left click fire · Right click scope · Shift sprint · R reload · Esc pause · PlayStation/Xbox pad works too'}
+else $('hint').textContent='Hold your phone sideways';
 $('lv').onclick=()=>{lvl^=1;lab();sv()};bFa.onclick=()=>{af^=1;lab();sv()};bGy.onclick=()=>{gyS=(gyS+1)%5;lab();sv()};bQl.onclick=()=>{ql=(ql+1)%3;applyQ();lab();sv()};bFp.onclick=()=>{showF^=1;lab();sv()};bLs.onclick=()=>{sens=(sens+1)%3;lab();sv()};bSk.onclick=()=>{shake^=1;lab();sv()};applyQ();lab();
 reset();snap();over=true;requestAnimationFrame(loop);
 </script></body></html>
