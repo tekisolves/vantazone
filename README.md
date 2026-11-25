@@ -1,29 +1,40 @@
 # VANTA ZONE
 
-A landscape, last-one-standing first-person shooter that runs in a phone browser — built to play smoothly on low-end Android phones. The whole game is one HTML file (three.js r128 from a CDN, no other assets: every shape, colour and sound is generated in code).
+A landscape, last-one-standing first-person shooter that runs in a phone browser — built to play smoothly on low-end Android phones. The whole game is one HTML file plus a bundled copy of three.js r128 (`vendor/`). There are no other assets: every shape, colour and sound is generated in code.
 
 ![Preview](docs/preview.png)
 
 ## Play
-Open `index.html` in a browser, or enable **GitHub Pages** (Settings → Pages → deploy from `main`, root) and play from the link on your phone. Hold the phone in landscape. Live: https://tekisolves.github.io/vantazone/ (once GitHub Pages is on).
+**Play now: https://tekisolves.github.io/vantazone/** (GitHub Pages, deployed from `main`). Hold the phone in landscape.
 
-**Phone:** left thumb moves · right thumb turns/looks (push further = faster) · FIRE · AIM (scope) · SPRINT · RELOAD · II pauses.
+On Android, use **Add to Home screen** in the browser menu: it then opens full screen in landscape like an app, and works offline after the first visit. You can also open `index.html` from a local web server.
 
-**Laptop:** WASD · mouse look · left click fire · right click scope · Shift sprint · R reload · Esc pause.
+**Phone:** left thumb moves · right thumb turns/looks (push further = faster) · FIRE · AIM (scope) · SPRINT · RELOAD · SWAP (or TAKE a gun from a crate) · II pauses.
 
-**Controller (PlayStation/Xbox):** sticks move/look · R2 fire · L2 scope · L3 sprint · Square/X reload · Options pause.
+**Laptop:** WASD · mouse look · left click fire · right click scope · Shift sprint · R reload · 1 / 2 / wheel swap · F take a gun · Esc or P pause · Enter deploys.
+
+**Controller (PlayStation/Xbox):** sticks move/look · R2 fire · L2 scope · L3 sprint · Square/X reload · Triangle/Y or R1 swap · Options pause · Cross/A starts from the menus.
 
 The game detects the device and sets controls, quality and aim help to match.
 
+**First match:** a short tutorial walks you through the controls (skip it or replay it from ⚙ Settings).
+
 **Tune your aim:** set MODE to RANGE, play 12 targets, and follow the tip on the results screen.
 
+## What keeps it fresh
+- **A new arena every match**, and a storm that shrinks toward a different spot each time.
+- **Three guns**: VX-9 Assault, KR-12 Breacher (shotgun), LR-7 Marksman. Weapon crates (sky-blue beams) hold the ones you didn't bring.
+- **Ranks and XP** saved on your device: 10 ranks, starting-gun unlocks, gun finishes, personal records.
+- **Daily challenge** for bonus XP.
+
 ## Art direction — "sun-baked tactical"
-Light, warm, muted world; dark enemies with one hostile red-orange accent. Colour = meaning (mint = you, red-orange = enemy, violet = storm, amber = armour, green = health). Hard surfaces crisp, organic shapes smooth, everything grounded with baked ambient occlusion. Full rules are at the top of `index.html`.
+Light, warm, muted world; dark enemies with one hostile red-orange accent. Colour = meaning (mint = you, red-orange = enemy, violet = storm, amber = armour, green = health, sky blue = weapon crate). Hard surfaces crisp, organic shapes smooth, everything grounded with baked ambient occlusion. Full rules are at the top of `index.html`.
 
 ## Performance budget
-All scenery is one mesh with light and shadows baked at load · each enemy is 7 meshes · no real-time shadows · 30 FPS cap with auto resolution · fixed 1/60 s game logic · nothing allocated per frame. Turn on `FPS: ON` in the options to measure.
+Scenery is two meshes with light and shadows baked in: the outside world (built once) and the arena (rebuilt per match, behind the fade) · each enemy is 7 meshes · bullet holes, sparks, dust and shell casings are one draw call each · no real-time shadows · 30 FPS cap with auto resolution · fixed 1/60 s game logic · nothing allocated per frame. Turn on `FPS: ON` in ⚙ Settings to measure.
 
 ## Changelog
+- [1.4](docs/CHANGES_v1.4.md) — new arena every match, moving storm, 3 guns + weapon crates, ranks/XP/unlocks, daily challenge, records, tutorial, simpler menu, enemy callouts, bullet holes/casings/storm wall/ground graphics, laptop control fixes, install-to-home-screen + offline, bundled three.js
 - [1.3](docs/CHANGES_v1.3.md) — enemy brain: patrol, hunt last known position, cover and peek, flanking, hearing, fair spawns, SPOTTED callouts
 - [1.2](docs/CHANGES_v1.2.md) — firing range with aim measurements and tuning tips, turn boost, tracking assist
 - [1.1](docs/CHANGES_v1.1.md) — phone/laptop detection, controller support, golden-hour graphics, 10/16 enemies, laser-sight marksman, line-of-sight culling
