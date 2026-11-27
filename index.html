@@ -59,6 +59,7 @@ body.desk .btn,body.desk #jb,body.desk #jk,body.desk #rb,body.desk #rk{display:n
 #hint{font-size:12px;opacity:.75;letter-spacing:.05em}
 /* 1.4: menus, progression, weapons, tutorial, callouts */
 #row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#zone{position:absolute;top:94px;left:50%;transform:translateX(-50%);font-weight:900;font-style:italic;letter-spacing:.3em;font-size:13px;color:#fff;text-shadow:0 1px 6px #000;opacity:0;transition:opacity .8s;white-space:nowrap}
 .sm{padding:8px 12px!important;letter-spacing:.06em!important;font-size:11px!important;background:#2b2350!important;color:#e8f0ff!important}
 #cog{font-size:15px!important;padding:6px 12px!important}
 .card{background:var(--glass);border:1px solid rgba(53,242,207,.25);border-radius:10px;padding:6px 14px;min-width:240px;text-align:left}
@@ -101,7 +102,7 @@ body.two #bw{display:flex}
  <div id="comp">N 000</div>
  <div id="storm" class="pill">Storm <b id="stt" style="color:inherit">2:30</b></div>
  <div id="feed"></div>
- <div id="cine"></div><div id="out"></div><div id="low"></div><div id="xh"></div><div id="hm"></div><div id="vig"></div><div id="banner"></div>
+ <div id="cine"></div><div id="out"></div><div id="low"></div><div id="xh"></div><div id="hm"></div><div id="vig"></div><div id="banner"></div><div id="zone"></div>
  <div id="flk" class="pill">FLANKER</div>
  <div class="co"></div><div class="co"></div><div class="co"></div>
  <div id="stat">
@@ -120,7 +121,7 @@ body.two #bw{display:flex}
 <div class="screen" id="start"><h1>VANTA ZONE</h1>
  <div class="card" id="rank"><div class="top"><span>RANK <b id="rkn">RECRUIT</b></span><span id="rkx">0 XP</span></div><div class="xpbar"><i id="rkb"></i></div></div>
  <button class="go" id="deploy">DEPLOY</button>
- <div id="row"><button class="go sm" id="lv">MODE: TRAINING</button><button class="go sm" id="lo">GUN: VX-9</button><button class="go sm" id="cog" aria-label="Settings">⚙</button></div>
+ <div id="row"><button class="go sm" id="lv">MODE: TRAINING</button><button class="go sm" id="lo">GUN: VX-9</button><button class="go sm" id="pk">PERK: PLATED</button><button class="go sm" id="cog" aria-label="Settings">⚙</button></div>
  <div id="daily"></div><div id="recs"></div><div id="hint"></div></div>
 <div class="screen" id="settings"><h1 style="font-size:30px">SETTINGS</h1><div id="opts"></div><p id="ctl"></p><button class="go" id="sback">BACK</button></div>
 <div class="screen" id="end"><h1 id="et">ELIMINATED</h1><p id="es"></p><div id="xpl"></div>
@@ -134,25 +135,28 @@ body.two #bw{display:flex}
 <script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
 <script>
 /* ===================================================================================================
-   VANTA ZONE 1.4  (what changed and why: docs/CHANGES_v1.4.md; earlier: CHANGES_v1.0-1.3)
-   1.4 adds: a new arena layout every match, a moving storm, three guns + weapon crates, ranks/XP/unlocks,
-   daily challenges, saved records, a first-run tutorial, enemy callouts, more graphics feedback
-   (bullet holes, shell casings, hit sparks, storm wall, ground detail) and laptop control fixes.
+   VANTA ZONE 1.5 "GRIT"  (what changed and why: docs/CHANGES_v1.5.md; earlier: CHANGES_v1.0-1.4)
+   1.5 adds: a 40x40 city (4x the area) in five districts with buildings and landmarks, a new city every match,
+   the "grit" look (one generated grime texture, half-Lambert light, colour grade, dust haze), perks as the second
+   half of your loadout, district names on screen, and view-distance culling so it still runs on a weak phone.
 
-   ART DIRECTION: "sun-baked tactical"  (follow these rules for anything new)
-   1. VALUE FIRST. The world is light, warm and muted (sand concrete, terracotta, dry olive). Enemies are DARK with one
-      hostile red-orange accent, so they pop at a glance. Colour = meaning, never reused:
-      mint = you / UI, red-orange = enemy, violet = storm, amber = armour, green = health, sky blue = weapon crate.
-   2. HARD vs SOFT. Man-made things (concrete, crates, metal, rocks) are crisp: bevelled edges, flat facets.
-      Organic things (bodies, foliage, clouds) are smooth-shaded.
-   3. WARM SUN, COOL SHADOWS. Every object is grounded: darker where it meets the floor (baked ambient occlusion),
-      the floor darkens near walls, and a warm haze fades distance.
-   4. DETAIL WHERE YOU LOOK. Cover, enemies and your gun get the detail; the background stays simple.
-   5. LAYERED FEEDBACK. Every hit = sound + spark + marker + body jolt; every shot = flash + recoil + a little shake.
+   ART DIRECTION: "stylised grit"  (follow these rules for anything new)
+   Not photo-real: like Fortnite or Valorant, the shapes and colours are simplified so you read the game instantly,
+   and the GRIT lives in the surfaces (stains, rust, cracks, rain streaks, worn paint) instead of in polygons.
+   1. SHAPE FIRST, COLOUR SECOND, GRIT THIRD. Silhouettes and big colour areas must read at a glance; grime only
+      changes value a little and never hides a shape. Enemies are DARK with one hostile red-orange accent.
+      Colour = meaning, never reused: mint = you / UI, red-orange = enemy, violet = storm, amber = armour,
+      green = health, sky blue = weapon crate.
+   2. HARD vs SOFT. Man-made things are crisp: flat facets (bevels where they show). Organic things are smooth.
+   3. SOFT LIGHT, WARM SUN, COOL SHADOWS. Half-Lambert light (Team Fortress 2 / Valorant) keeps shadow sides readable;
+      everything is grounded with baked ambient occlusion; a split-tone grade cools shadows and warms lights.
+   4. EVERY DISTRICT HAS AN IDENTITY: its own floor, cover and one tall landmark you can navigate by.
+   5. DETAIL WHERE YOU LOOK. Cover, enemies and your gun get the detail; the background is simple boxes in the haze.
+   6. LAYERED FEEDBACK. Every hit = sound + spark + marker + body jolt; every shot = flash + recoil + a little shake.
 
-   TECH: flat colours, NO textures, one sun. 1 map tile = 1 world unit (about 2.7 m; your eye is 0.6 up).
-   BUDGET for a weak phone: all scenery is ONE mesh with its light baked in; each enemy = 7 small meshes;
-   no real-time shadows; 30 FPS cap; game logic in fixed 1/60 s steps; nothing allocated per frame.
+   TECH: baked vertex colours x ONE 256px tiling grime texture (made in code), one sun. 1 tile = 1 world unit (~2.7 m).
+   BUDGET for a weak phone: scenery = a few chunk meshes with light baked in, culled by view and by distance (the
+   haze is thicker on LOW); each enemy = 7 small meshes; no real-time shadows; 30 FPS cap; fixed 1/60 s logic.
    =================================================================================================== */
 const $=id=>document.getElementById(id);
 const mm=$('mini'),m=mm.getContext('2d');
@@ -164,90 +168,106 @@ const DESK=!TOUCH;document.body.classList.add(TOUCH?'touch':'desk');
 addEventListener('error',e=>{const d=document.createElement('div');d.style.cssText='position:fixed;left:0;top:0;right:0;z-index:99;background:#c00;color:#fff;font:11px monospace;padding:4px';d.textContent='ERR: '+e.message+' @'+e.lineno;document.body.appendChild(d)}); // shows any script error on screen
 
 // ============================== 1. MAP ==============================
-// 0 = floor. 1 = concrete barrier, 2 = shipping container, 3 = stacked crates.
-// CLASSIC is the hand-made layout (menu background + firing range). Every real match generates a NEW layout (genMap below).
-const CLASSIC=["11111111111111111111",
-"10000000000000000001",
-"10000000000000000001",
-"10022000100000003001",
-"10020000000100033001",
-"10000011100000000001",
-"10000000000000000001",
-"10000000010000000001",
-"10000000000000000001",
-"10000001033000000001",
-"10000000033010000001",
-"10000000000000000001",
-"10000000001000000001",
-"10000000000000000001",
-"10000000000111000001",
-"10033000100000002001",
-"10030000000100022001",
-"10000000000000000001",
-"10000000000000000001",
-"11111111111111111111"];
-const GRID=new Uint8Array(400);                                  // the live layout (row-major, 20x20)
-const loadMap=rows=>{for(let y=0;y<20;y++)for(let x=0;x<20;x++)GRID[y*20+x]=+rows[y][x]};
-const cell=(x,y)=>{x=Math.floor(x);y=Math.floor(y);return x<0||y<0||x>19||y>19?1:GRID[y*20+x]};
-const inMap=(x,y)=>x>=0&&y>=0&&x<20&&y<20;
-// SPAWN PADS: one per side. Generated layouts keep these clear; the player starts on one of them, facing the middle.
-const PADS=[{x:10.5,y:17.5,a:-Math.PI/2,r:[8,12,15,18]},{x:10.5,y:2.5,a:Math.PI/2,r:[8,12,1,4]},{x:2.5,y:10.5,a:0,r:[1,4,8,12]},{x:17.5,y:10.5,a:Math.PI,r:[15,18,8,12]}];
-// LAYOUT GENERATOR. Drops pieces of cover (barrier lines, containers, crate stacks) at random, with rules that keep it playable:
-//  - pieces never touch each other or the outer wall (a gap of at least one tile), so every floor tile can be reached
-//  - spawn pads stay open
-//  - enough cover: most floor tiles must have cover within 2 tiles, so there are no long, empty shooting galleries
-// It retries until a layout passes (usually 1-3 tries, a few milliseconds) and falls back to CLASSIC if it ever can't.
-function genMap(R0){
- const res=new Uint8Array(400);for(const p of PADS)for(let y=p.r[2];y<=p.r[3];y++)for(let x=p.r[0];x<=p.r[1];x++)res[y*20+x]=1;
- const SHAPES=[ // [type, cells] relative; type 1 barrier, 2 container, 3 crates
-  [1,[[0,0],[1,0]]],[1,[[0,0],[1,0],[2,0]]],[1,[[0,0],[1,0],[2,0],[3,0]]],[1,[[0,0],[0,1],[0,2]]],[1,[[0,0],[0,1],[0,2],[0,3]]],[1,[[0,0]]],
-  [1,[[0,0],[1,0],[2,0],[0,1]]],[1,[[0,0],[1,0],[0,1],[0,2]]],                                // L-shaped barriers (corner pillar + two arms)
-  [2,[[0,0],[1,0]]],[2,[[0,0],[0,1]]],[2,[[0,0],[1,0],[2,0]]],[2,[[0,0],[0,1],[0,2]]],[2,[[0,0],[1,0],[0,1],[1,1]]],
-  [3,[[0,0]]],[3,[[0,0],[1,0]]]];
- for(let tries=0;tries<80;tries++){
-  GRID.fill(0);for(let i=0;i<20;i++){GRID[i]=GRID[380+i]=GRID[i*20]=GRID[i*20+19]=1}
-  const target=44+(R0()*14|0);let walls=0,fails=0;
-  while(walls<target&&fails<400){const sh=SHAPES[R0()*SHAPES.length|0],ox=2+(R0()*16|0),oy=2+(R0()*16|0);let ok=true;
-   for(const[dx,dy]of sh[1]){const x=ox+dx,y=oy+dy;if(x<2||y<2||x>17||y>17||res[y*20+x]){ok=false;break}
-    for(let ny=y-1;ny<=y+1&&ok;ny++)for(let nx=x-1;nx<=x+1;nx++){if(GRID[ny*20+nx]&&!(nx>0&&ny>0&&nx<19&&ny<19&&sh[1].some(([a,b])=>ox+a==nx&&oy+b==ny))){ok=false;break}}
-    if(!ok)break}
-   if(!ok){fails++;continue}
-   for(const[dx,dy]of sh[1])GRID[(oy+dy)*20+ox+dx]=sh[0];walls+=sh[1].length}
-  // connectivity: flood from the south pad; every floor tile must be reached
-  const seen=new Uint8Array(400),q=[17*20+10];seen[q[0]]=1;let n=0;
-  while(q.length){const c=q.pop();n++;const cx=c%20,cy=c/20|0;for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const j=(cy+ay)*20+cx+ax;if(!seen[j]&&!GRID[j]){seen[j]=1;q.push(j)}}}
-  let floor=0,covered=0;for(let y=1;y<19;y++)for(let x=1;x<19;x++){if(GRID[y*20+x])continue;floor++;
-   let c=false;for(let ny=Math.max(2,y-2);ny<=Math.min(17,y+2)&&!c;ny++)for(let nx=Math.max(2,x-2);nx<=Math.min(17,x+2);nx++)if(GRID[ny*20+nx]){c=true;break}
-   if(c)covered++}
-  if(n===floor&&covered/floor>.62)return true}
- loadMap(CLASSIC);return false}
+// 0 = floor. 1 = concrete barrier, 2 = shipping container, 3 = stacked crates, 4 = building.
+// The map is a 40x40 CITY (4x the area of 1.4's arena) in five DISTRICTS, each with its own look, cover and landmark:
+//   NW container yard · NE old town · SW the ruins · SE rail depot · centre plaza, joined by two cross roads.
+// Every match generates a NEW city (genCity). The firing range and the menu always use the same one (fixed seed),
+// so range scores stay comparable.
+const MW=40,NN=MW*MW,MC=MW/2;                                    // map size (tiles) and centre
+const GRID=new Uint8Array(NN);                                   // the live layout (row-major, MW x MW)
+const cell=(x,y)=>{x=Math.floor(x);y=Math.floor(y);return x<0||y<0||x>=MW||y>=MW?1:GRID[y*MW+x]};
+const inMap=(x,y)=>x>=0&&y>=0&&x<MW&&y<MW;
+const DNAME=['CONTAINER YARD','OLD TOWN','THE RUINS','RAIL DEPOT','CENTRAL PLAZA'];
+const district=(x,y)=>Math.abs(x-MC)<6.5&&Math.abs(y-MC)<6.5?4:(x<MC?(y<MC?0:2):(y<MC?1:3));
+const onRoad=(x,y)=>(x>=17&&x<=22)||(y>=17&&y<=22),isRoad=(x,y)=>district(x,y)!=4&&onRoad(x,y);   // the cross roads between districts
+// LANDMARK cells: drawn as something special instead of a plain block (cell -> height used for bullet impacts).
+// Crane legs (yard), fuel tank (depot), monument (plaza). The ruins' radio mast and the town's water tower sit on normal blocks.
+const LMK=new Map([[9*MW+4,1.15],[9*MW+13,1.15],[26*MW+31,1.7],[26*MW+32,1.7],[27*MW+31,1.7],[27*MW+32,1.7],[19*MW+19,1.1],[19*MW+20,1.1],[20*MW+19,1.1],[20*MW+20,1.1]]);
+const MAST=30*MW+8;                                              // the radio mast stands on this block in the ruins
+// SPAWN PADS: the four ends of the cross roads (always open). You start on one, facing the middle.
+const PADS=[{x:19.5,y:37.5,a:-Math.PI/2},{x:20.5,y:2.5,a:Math.PI/2},{x:2.5,y:20.5,a:0},{x:37.5,y:19.5,a:Math.PI}];
+// A small seeded random generator, so a fixed seed always gives the same city (range + menu).
+const seeded=s=>()=>(s=s*16807%2147483647)/2147483647;
+// CITY GENERATOR. Each district places its own kind of cover with its own rules, then:
+//  - the roads and plaza are cleared, and get scattered cover so they're never empty shooting galleries
+//  - landmark cells are forced into place
+//  - CONNECTIVITY: flood-fill from a spawn pad; any floor pocket it can't reach gets a wall next to it opened up,
+//    repeated until every floor tile can be reached. So it always succeeds (no fallback map needed).
+function genCity(R0){
+ const ri=(a,b)=>a+(R0()*(b-a+1)|0),ch=a=>a[R0()*a.length|0];
+ const put=(x,y,t)=>{if(x>0&&y>0&&x<MW-1&&y<MW-1)GRID[y*MW+x]=t},rect=(x0,y0,w,h,t)=>{for(let y=y0;y<y0+h;y++)for(let x=x0;x<x0+w;x++)put(x,y,t)};
+ GRID.fill(0);for(let i=0;i<MW;i++){GRID[i]=GRID[(MW-1)*MW+i]=GRID[i*MW]=GRID[i*MW+MW-1]=1}
+ // NW CONTAINER YARD: rows of 2-3 long containers (some stacked two deep), crates in the lanes
+ for(const yy of[3,7,11,15]){let x=2+ri(0,1);
+  while(x<15){const ln=ch([2,3,3]);
+   if(R0()<.8){if(R0()<.55){rect(x,yy,Math.min(ln,16-x),1,2);if(R0()<.35)rect(x,yy+1,Math.min(ln,16-x),1,2)}else rect(x,yy,1,Math.min(ln,17-yy),2)}
+   x+=ln+ch([2,2,3])}}
+ for(let i=0;i<6;i++)put(ri(2,15),ri(2,15),3);
+ // NE OLD TOWN: blocks of buildings on a street grid; block sizes vary every match, some corners are cut away (courtyards)
+ for(const[x0,ws]of[[23,[2,3]],[28,[2,3]],[33,[3,4]]])for(const[y0,hs]of[[2,[2,3]],[7,[2,3]],[12,[3,4]]]){
+  if(R0()<.1){put(x0+1,y0+1,3);continue}                            // an empty lot with some crates
+  const w=ch(ws),h=ch(hs);rect(x0,y0,w,h,4);
+  if(R0()<.5)put(x0+ch([0,w-1]),y0+ch([0,h-1]),0)}
+ // SW RUINS: broken walls (some L-shaped) and half-collapsed buildings, rubble crates
+ for(let i=0;i<17;i++){const x=ri(2,15),y=ri(23,36);
+  if(R0()<.45){const L=ri(2,4);if(R0()<.5){rect(x,y,L,1,1);if(R0()<.6)rect(x,y,1,ri(2,3),1)}else rect(x,y,1,L,1)}
+  else{rect(x,y,ch([2,3]),2,4);put(x+ri(0,1),y+ri(0,1),0)}}
+ for(let i=0;i<8;i++)put(ri(2,16),ri(23,37),3);
+ // SE RAIL DEPOT: long platform barriers, freight containers, crates
+ for(const yy of[24,29,34]){let x=23+ri(0,2);while(x<36){const ln=ri(3,5);rect(x,yy,Math.min(ln,37-x),1,1);x+=ln+2}}
+ for(let i=0;i<6;i++){const v=R0()<.5;rect(ri(23,35),ri(23,36),v?1:ri(2,3),v?ri(2,3):1,2)}
+ for(let i=0;i<6;i++)put(ri(23,37),ri(23,37),3);
+ // ROADS + PLAZA: cleared, then given cover: short barriers and crate stacks, never on a spawn pad, never blocking the road
+ for(let y=1;y<MW-1;y++)for(let x=1;x<MW-1;x++)if(onRoad(x,y))GRID[y*MW+x]=0;
+ for(const[ax,ay]of[[1,0],[0,1]])for(let s=3;s<MW-3;s+=ri(4,6)){if(Math.abs(s+.5-MC)<7)continue;   // along each road arm
+  const side=ch([17,18,21,22]),x=ax?s:side,y=ax?side:s;
+  if(R0()<.55){if(ax)rect(x,y,2,1,1);else rect(x,y,1,2,1)}else put(x,y,3)}
+ for(const p of PADS)for(let y=(p.y|0)-2;y<=(p.y|0)+2;y++)for(let x=(p.x|0)-2;x<=(p.x|0)+2;x++)if(inMap(x,y)&&x>0&&y>0&&x<MW-1&&y<MW-1)GRID[y*MW+x]=0;
+ for(const[x,y]of[[16,16],[23,16],[16,23],[23,23]])put(x,y,1);                                   // plaza corner pillars
+ rect(18,14,4,1,1);rect(18,25,4,1,1);rect(14,18,1,4,1);rect(25,18,1,4,1);                        // low walls across the road mouths...
+ for(const[x,y]of[[19+ri(0,1),14],[19+ri(0,1),25],[14,19+ri(0,1)],[25,19+ri(0,1)]])put(x,y,0);     // ...each with a gap
+ // LANDMARKS
+ rect(19,19,2,2,4);put(4,9,1);put(13,9,1);rect(31,26,2,2,1);put(8,30,1);
+ // CONNECTIVITY (see above)
+ const seen=new Uint8Array(NN);
+ for(let guard=0;guard<400;guard++){seen.fill(0);const q=[(PADS[0].y|0)*MW+(PADS[0].x|0)];seen[q[0]]=1;
+  while(q.length){const c=q.pop(),cx=c%MW,cy=c/MW|0;for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const j=(cy+ay)*MW+cx+ax;if(!seen[j]&&!GRID[j]){seen[j]=1;q.push(j)}}}
+  let pocket=-1;for(let i=0;i<NN;i++)if(!GRID[i]&&!seen[i]){pocket=i;break}
+  if(pocket<0)return true;
+  const px=pocket%MW,py=pocket/MW|0;let opened=false;
+  for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const x=px+ax,y=py+ay,j=y*MW+x;if(x>0&&y>0&&x<MW-1&&y<MW-1&&GRID[j]&&!LMK.has(j)&&j!==MAST){GRID[j]=0;opened=true;break}}
+  if(!opened)GRID[pocket]=3}                                         // (never happens in practice) fill a sealed pocket instead
+ return true}
 const isWall=(x,y)=>inMap(x,y)&&cell(x,y)>0;
-const isBorder=(x,y)=>x==0||y==0||x==19||y==19;
+const isBorder=(x,y)=>x==0||y==0||x==MW-1||y==MW-1;
 // Every visible block fills its whole grid cell. Collision, bullets and line of sight all use this grid,
 // so if a shape were thinner than its cell you'd get invisible walls and bullets stopping in mid-air.
-const CELL_H=[0,1.15,1.0,.94];                                   // height of each block type
-const wallH=(x,y)=>!isWall(x,y)?0:(isBorder(x,y)?1.35:CELL_H[cell(x,y)]);
-// Group touching cells of the same type, so one container is one colour.
-const GROUP=new Int16Array(400);
-function groups(){GROUP.fill(-1);let n=0;for(let i=0;i<400;i++){const t=cell(i%20,i/20|0);if(!t||GROUP[i]>=0)continue;
- const st=[i];GROUP[i]=n;while(st.length){const c=st.pop(),cx=c%20,cy=c/20|0;
-  for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=cx+ax,ny=cy+ay,j=ny*20+nx;if(inMap(nx,ny)&&GROUP[j]<0&&cell(nx,ny)===t){GROUP[j]=n;st.push(j)}}}n++}}
-loadMap(CLASSIC);groups();
-// PALETTE: warm, muted, mid-to-light values for the world (enemies are dark; see KIT)
-const CONCRETE=0xb3aa9e,BORDER_CONC=0x968f86,WOOD=0xb8874f,WOOD_DARK=0x7a5532,ARMY=0x6a7450,HAZARD=0xd49a3a,SLABC=0xb9b0a4,SEAMC=0x6c665f,
- GRASS=0x8ea064,PINE=[0x3e6b45,0x4b7d50],LEAF=[0x5a8a4a,0x6c9b55],BARK=0x6b4a33,ROCKC=0x9a9288,MTN=[0x7d86b8,0x9097c9];
-const CONTAINER_COLS=[0xb4553d,0x2f7c77,0xc98d36];        // terracotta, muted teal, ochre
-const cellColor=(x,y)=>{const t=cell(x,y);return t==1?(isBorder(x,y)?BORDER_CONC:CONCRETE):t==2?CONTAINER_COLS[GROUP[y*20+x]%3]:WOOD};
-const LV=[{n:10,hp:60,spd:.8,acc:.25,dmg:3,react:1.5,rate:1.6},{n:16,hp:100,spd:1.1,acc:.5,dmg:6,react:.8,rate:1},{n:0,hp:60,spd:.8,acc:0,dmg:0,react:9,rate:9}]; // 2 = Firing range; 0 = Training, 1 = Standard
-let lvl=0;const RANGE=()=>lvl==2,STD=()=>lvl==1,DUR=()=>RANGE()?1e9:STD()?150:240;                              // storm length (s)
-// STORM: starts covering the whole arena around the middle, then shrinks AND drifts toward a random final spot (different every match).
+const CELL_H=[0,1.15,1.0,.94,2];                                 // height of each block type (buildings vary: BH)
+// Group touching cells of the same type, so one container is one colour and one building is one building.
+const GROUP=new Int16Array(NN),BH=new Float32Array(NN);
+function groups(){GROUP.fill(-1);let n=0;for(let i=0;i<NN;i++){const t=cell(i%MW,i/MW|0);if(!t||GROUP[i]>=0)continue;
+ const st=[i];GROUP[i]=n;
+ if(t==4){const d=district(i%MW,i/MW|0);BH[n]=d==4?1.1:d==2?rr(.85,1.6):rr(1.75,2.7)}       // 2-3 storeys in town, broken stumps in the ruins
+ while(st.length){const c=st.pop(),cx=c%MW,cy=c/MW|0;
+  for(const[ax,ay]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=cx+ax,ny=cy+ay,j=ny*MW+nx;if(inMap(nx,ny)&&GROUP[j]<0&&cell(nx,ny)===t){GROUP[j]=n;st.push(j)}}}n++}}
+const wallH=(x,y)=>{if(!isWall(x,y))return 0;if(isBorder(x,y))return 1.6;const i=(y|0)*MW+(x|0);return LMK.has(i)?LMK.get(i):cell(x,y)==4?BH[GROUP[i]]:CELL_H[cell(x,y)]};
+// PALETTE: dusty, sun-faded, mid values for the world (the grit comes from the GRIT texture); enemies are dark (see KIT)
+const CONCRETE=0xa69d90,BORDER_CONC=0x8a8378,WOOD=0xa67b4b,WOOD_DARK=0x6a4a2c,ARMY=0x5f6748,HAZARD=0xd29a34,SLABC=0xaea596,SEAMC=0x57524b,
+ ASPHALT=0x67645f,PAVE=0xb4a890,TOWNF=0xa39380,RUBBLEF=0x948468,DEPOTC=0x9d988e,
+ GRASS=0x8a935e,PINE=[0x3e6143,0x4b704c],LEAF=[0x5a7f48,0x6b8e52],BARK=0x6b4a33,ROCKC=0x958d82,MTN=[0x7a7f9e,0x8a8fae];
+const CONTAINER_COLS=[0xa5513c,0x2f6d69,0xb7823a];        // rust red, faded teal, ochre
+const BLD_COLS=[0xbf8963,0xcab28a,0x8c9f95,0xa49d92,0xb5785c,0xd0c2a4];   // plaster: terracotta, ochre, faded teal, grey, brick, cream
+const cellColor=(x,y)=>{const t=cell(x,y),g=GROUP[(y|0)*MW+(x|0)];return t==1?(isBorder(x,y)?BORDER_CONC:CONCRETE):t==2?CONTAINER_COLS[g%3]:t==4?(district(x,y)==2?0x8f8578:BLD_COLS[g%6]):WOOD};
+const LV=[{n:14,hp:60,spd:.8,acc:.25,dmg:3,react:1.5,rate:1.6},{n:22,hp:100,spd:1.1,acc:.5,dmg:6,react:.8,rate:1},{n:0,hp:60,spd:.8,acc:0,dmg:0,react:9,rate:9}]; // 2 = Firing range; 0 = Training, 1 = Standard
+let lvl=0;const RANGE=()=>lvl==2,STD=()=>lvl==1,DUR=()=>RANGE()?1e9:STD()?240:300;                              // storm length (s)
+// STORM: starts covering the whole city around the middle, then shrinks AND drifts toward a random final spot (different every match).
 // The centre moves less than the radius shrinks, so each later circle sits inside the earlier one, like a real battle royale.
-const ST={x0:10,y0:10,x1:10,y1:10,x:10,y:10,t:0};
-const stormK=()=>Math.min(1,ST.t/DUR()),stormR=()=>14.2-10.7*stormK();
+const ST={x0:MC,y0:MC,x1:MC,y1:MC,x:MC,y:MC,t:0};
+const stormK=()=>Math.min(1,ST.t/DUR()),stormR=()=>29-25*stormK();
 function stormStep(){const k=stormK();ST.x=ST.x0+(ST.x1-ST.x0)*k;ST.y=ST.y0+(ST.y1-ST.y0)*k}
-function pickStormEnd(){for(let k=0;k<200;k++){const x=5+Math.random()*10|0,y=5+Math.random()*10|0;let open=0;
+function pickStormEnd(){for(let k=0;k<300;k++){const x=12+Math.random()*16|0,y=12+Math.random()*16|0;let open=0;
   for(let j=-1;j<=1;j++)for(let i=-1;i<=1;i++)if(!cell(x+i,y+j))open++;
-  if(open>=8&&Math.hypot(x+.5-10,y+.5-10)<5.5){ST.x1=x+.5;ST.y1=y+.5;return}}ST.x1=ST.y1=10}
+  if(open>=8&&Math.hypot(x+.5-MC,y+.5-MC)<8){ST.x1=x+.5;ST.y1=y+.5;return}}ST.x1=ST.y1=MC}
 // Seeded random numbers: the scenery is laid out the same way on every load.
 let seed=24601;const rnd=()=>(seed=seed*16807%2147483647)/2147483647,rr=(a,b)=>a+(b-a)*rnd();
 
@@ -255,32 +275,84 @@ let seed=24601;const rnd=()=>(seed=seed*16807%2147483647)/2147483647,rr=(a,b)=>a
 const R=new THREE.WebGLRenderer({canvas:$('view'),antialias:DESK,powerPreference:'high-performance'}); // anti-aliasing only on laptops: too expensive for weak phone GPUs
 let pr=.6;R.setPixelRatio(pr);                                    // real value comes from applyQ(): starts low, auto-raises
 R.shadowMap.enabled=false;                                        // shadows are baked (see FAKE SHADOWS)
-const HAZE=0xeed5b6,scene=new THREE.Scene();scene.background=new THREE.Color(HAZE);scene.fog=new THREE.Fog(HAZE,25,160); // warm haze = depth
-const cam=new THREE.PerspectiveCamera(72,1,.03,140);cam.rotation.order='YXZ';scene.add(cam);
+// Dusty golden-hour haze. It hides the far edge of a big map (fewer things to draw clearly) and gives depth: near = sharp, far = soft.
+const HAZE=0xd8c2a2,FOGN=16,FOGF=125,scene=new THREE.Scene();scene.background=new THREE.Color(HAZE);scene.fog=new THREE.Fog(HAZE,FOGN,FOGF);
+const cam=new THREE.PerspectiveCamera(72,1,.03,200);cam.rotation.order='YXZ';scene.add(cam);
 function size(){R.setSize(innerWidth,innerHeight,false);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}
 addEventListener('resize',size);size();
-{const g=new THREE.SphereGeometry(125,16,12),q=g.attributes.position,c=new Float32Array(q.count*3),hz=new THREE.Color(HAZE),mid=new THREE.Color(0xb4c3e2),zn=new THREE.Color(0x4a6cbc),glow=new THREE.Color(0xffd9a6),t=new THREE.Color();
+{const SR=165,g=new THREE.SphereGeometry(SR,16,12),q=g.attributes.position,c=new Float32Array(q.count*3),hz=new THREE.Color(HAZE),mid=new THREE.Color(0xa9b5ca),zn=new THREE.Color(0x46619c),glow=new THREE.Color(0xffc98e),t=new THREE.Color();
  const sx=10/Math.hypot(10,6),sz=-6/Math.hypot(10,6);                        // sun direction on the horizon
- for(let i=0;i<q.count;i++){const y=q.getY(i)/125,k=Math.max(0,y),h=Math.hypot(q.getX(i),q.getZ(i))||1;
+ for(let i=0;i<q.count;i++){const y=q.getY(i)/SR,k=Math.max(0,y),h=Math.hypot(q.getX(i),q.getZ(i))||1;
   if(k<.35)t.copy(hz).lerp(mid,Math.pow(k/.35,.8));else t.copy(mid).lerp(zn,(k-.35)/.65);
-  const g2=Math.pow(Math.max(0,(q.getX(i)*sx+q.getZ(i)*sz)/h),4)*(1-k);t.lerp(glow,g2*.75);  // warm glow toward the sun
+  const g2=Math.pow(Math.max(0,(q.getX(i)*sx+q.getZ(i)*sz)/h),4)*(1-k);t.lerp(glow,g2*.8);  // warm glow toward the sun
   c[i*3]=t.r;c[i*3+1]=t.g;c[i*3+2]=t.b}
- g.setAttribute('color',new THREE.BufferAttribute(c,3));const sky=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));sky.position.set(10,0,10);sky.renderOrder=-1;scene.add(sky)}
+ g.setAttribute('color',new THREE.BufferAttribute(c,3));const sky=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide,fog:false,depthWrite:false}));sky.position.set(MC,0,MC);sky.renderOrder=-1;scene.add(sky)}
 
 // ============================== 3. LIGHT ==============================
 // The sun and sky fill only light MOVING things (enemies, your gun, pickups). Static scenery has the same light baked in.
-scene.add(new THREE.HemisphereLight(0xd2deff,0xb3a58f,.62)); // cool sky fill (shadows lean blue), warm bounce from the sand
-const sun=new THREE.DirectionalLight(0xffdfb2,.95);sun.position.set(20,8.2,4);sun.target.position.set(10,0,10);scene.add(sun,sun.target);
-const SKYC=new THREE.Color(0xd2deff),GNDC=new THREE.Color(0xb3a58f),SUNC=new THREE.Color(0xffdfb2).multiplyScalar(.95),LD=new THREE.Vector3(10,8.2,-6).normalize(); // LD = direction toward the sun: low (35°), golden-hour light with long shadows
-// The same sum the GPU's Lambert light does (sky fill + sun * how much the face points at it), done once on the CPU.
-function shade(n,out){const d=Math.max(0,n.dot(LD));out.copy(GNDC).lerp(SKYC,.5*n.y+.5).multiplyScalar(.62);out.r+=SUNC.r*d;out.g+=SUNC.g*d;out.b+=SUNC.b*d;return out}
+scene.add(new THREE.HemisphereLight(0xc9d6f2,0xa8977d,.62)); // cool sky fill (shadows lean blue), warm bounce from the dust
+const sun=new THREE.DirectionalLight(0xffd7a6,.95);sun.position.set(MC+10,8.2,MC-6);sun.target.position.set(MC,0,MC);scene.add(sun,sun.target);
+const SKYC=new THREE.Color(0xc9d6f2),GNDC=new THREE.Color(0xa8977d),SUNC=new THREE.Color(0xffd7a6).multiplyScalar(1.05),LD=new THREE.Vector3(10,8.2,-6).normalize(); // LD = direction toward the sun: low (35°), golden-hour light with long shadows
+// HALF-LAMBERT (Valve's trick from Team Fortress 2, also used by Valorant): light wraps further round each shape, so the
+// side away from the sun is soft and readable instead of black. Readability first: you can always see the shape.
+function shade(n,out){const w=n.dot(LD)*.5+.5,d=w*w;out.copy(GNDC).lerp(SKYC,.5*n.y+.5).multiplyScalar(.46);out.r+=SUNC.r*d;out.g+=SUNC.g*d;out.b+=SUNC.b*d;return out}
 const bmat=(c,o)=>new THREE.MeshBasicMaterial(Object.assign({color:c},o));   // unlit (light already baked in)
 // RIM LIGHT: a faint cool light from behind, on moving things only. It outlines enemies' edges so they separate from the background.
-{const rim=new THREE.DirectionalLight(0x9fb8ff,.45);rim.position.set(0,6,16);rim.target.position.set(10,0,10);scene.add(rim,rim.target)}
+{const rim=new THREE.DirectionalLight(0x9fb8ff,.45);rim.position.set(MC-10,6,MC+6);rim.target.position.set(MC,0,MC);scene.add(rim,rim.target)}
 // SUN DISC + glow, sitting in the sky where the light comes from
-{const sp=new THREE.Vector3(10,0,10).addScaledVector(LD,112);
- const disc=new THREE.Mesh(new THREE.IcosahedronGeometry(4.2,2),bmat(0xfff3da,{fog:false}));disc.position.copy(sp);scene.add(disc);
- const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(11,2),bmat(0xffd9a0,{fog:false,transparent:true,opacity:.28,depthWrite:false}));halo.position.copy(sp);scene.add(halo)}
+{const sp=new THREE.Vector3(MC,0,MC).addScaledVector(LD,150);
+ const disc=new THREE.Mesh(new THREE.IcosahedronGeometry(5.5,2),bmat(0xfff0d4,{fog:false}));disc.position.copy(sp);scene.add(disc);
+ const halo=new THREE.Mesh(new THREE.IcosahedronGeometry(15,2),bmat(0xffcf94,{fog:false,transparent:true,opacity:.28,depthWrite:false}));halo.position.copy(sp);scene.add(halo)}
+
+// ============================== 3b. GRIT (one small texture for the whole world) ==============================
+// Shapes and colours stay clean and readable; the GRIT lives in the surfaces: rain streaks and rust on walls,
+// cracks, oil and patches on the floor, fine grain up close. It's ONE 256x256 texture, made in code at load
+// (no download), that tiles seamlessly and is stretched over everything by world position, so nothing needs UV maps.
+//   red channel   = walls (blotches + vertical streaks)
+//   green channel = floors (patches + cracks + stains)
+//   blue channel  = fine grain, sampled 5x smaller for close-up detail
+function grimeTex(){const S=256,cv=document.createElement('canvas');cv.width=cv.height=S;const cx=cv.getContext('2d'),im=cx.createImageData(S,S),d=im.data;
+ let sd=99;const r=()=>(sd=sd*16807%2147483647)/2147483647;
+ // tileable value noise: a gx * gy grid of random values, smoothly blended, wrapping round the edges
+ const layer=(gx,gy)=>{const v=new Float32Array(gx*gy);for(let i=0;i<v.length;i++)v[i]=r();const o=new Float32Array(S*S);
+  for(let y=0;y<S;y++){const fy=y/S*gy,y0=fy|0,ty=fy-y0,sy=ty*ty*(3-2*ty),y1=(y0+1)%gy;
+   for(let x=0;x<S;x++){const fx=x/S*gx,x0=fx|0,tx=fx-x0,sx=tx*tx*(3-2*tx),x1=(x0+1)%gx;
+    const a=v[y0*gx+x0]+(v[y0*gx+x1]-v[y0*gx+x0])*sx,b=v[y1*gx+x0]+(v[y1*gx+x1]-v[y1*gx+x0])*sx;o[y*S+x]=a+(b-a)*sy}}return o};
+ const L4=layer(4,4),L8=layer(8,8),L16=layer(16,16),L32=layer(32,32),ST=layer(40,3),ST2=layer(64,6),CR=layer(9,9),CR2=layer(14,14);
+ const cl=v=>Math.max(0,Math.min(255,v*255));
+ for(let i=0;i<S*S;i++){const f=L4[i]*.45+L8[i]*.28+L16[i]*.17+L32[i]*.1;          // big soft blotches (mean .5)
+  const streak=Math.pow(ST[i],5)*.5+Math.pow(ST2[i],6)*.35;                         // drips running down the walls
+  const ridge=1-Math.abs(2*CR2[i]-1),crack=Math.max(0,(ridge-.975)/.025)*Math.max(0,(CR[i]-.5)/.5);   // a few thin hairline cracks, only in some patches
+  const oil=Math.pow(Math.max(0,L8[i]*.6+L16[i]*.4-.66)/.34,1.5);                  // dark oil / water stains
+  d[i*4]=cl(.56+(f-.5)*.95-streak*.5+(L32[i]-.5)*.12);
+  d[i*4+1]=cl(.57+(f-.5)*1.05-crack*.3-oil*.32+(L32[i]-.5)*.16);
+  d[i*4+2]=cl(.5+(L32[i]-.5)*.35+(r()-.5)*.32);d[i*4+3]=255}
+ cx.putImageData(im,0,0);const t=new THREE.CanvasTexture(cv);t.wrapS=t.wrapT=THREE.RepeatWrapping;
+ if(DESK)t.anisotropy=Math.min(8,R.capabilities.getMaxAnisotropy());return t}   // laptops: keeps the floor crisp at shallow angles
+// The world's one material: baked colour x grit, then a gentle colour grade (cool shadows, warm lights) and the haze.
+const HI='#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n';
+const WORLDM=new THREE.RawShaderMaterial({defines:{},
+ uniforms:{g:{value:grimeTex()},fc:{value:new THREE.Color(HAZE)},fn:{value:FOGN},ff:{value:FOGF}},
+ vertexShader:`precision highp float;uniform mat4 modelViewMatrix,projectionMatrix;
+attribute vec3 position,normal,color;attribute float gr;
+varying vec3 vC;varying vec2 vU;varying float vF,vD,vG;
+void main(){vC=color;vG=gr;vec3 n=abs(normal);
+ if(n.y>.6){vU=position.xz*.25;vF=1.;}else if(n.x>n.z){vU=position.zy*.25;vF=0.;}else{vU=position.xy*.25;vF=0.;}   // pick the flattest projection
+ vec4 mv=modelViewMatrix*vec4(position,1.);vD=-mv.z;gl_Position=projectionMatrix*mv;}`,
+ fragmentShader:HI+`uniform sampler2D g;uniform vec3 fc;uniform float fn,ff;
+varying vec3 vC;varying vec2 vU;varying float vF,vD,vG;
+void main(){vec3 t=texture2D(g,vU).rgb;
+#ifdef LOWQ
+ float fine=.5;                                               // LOW: one texture read per pixel instead of two
+#else
+ float fine=texture2D(g,vU*5.).b;
+#endif
+
+ float k=mix(t.r,t.g,vF)+(fine-.5)*.55;                       // how dirty this spot is (.55 = clean)
+ vec3 c=vC*(1.+(k-.55)*vG);
+ float l=dot(c,vec3(.3,.59,.11));
+ c*=mix(vec3(.9,.96,1.07),vec3(1.05,1.,.92),smoothstep(.1,.62,l));   // split-tone grade
+ gl_FragColor=vec4(mix(c,fc,smoothstep(fn,ff,vD)),1.);}`});
 
 // ============================== 4. SHAPE KIT ==============================
 const V3=THREE.Vector3,UPV=new V3(0,1,0);
@@ -300,9 +372,10 @@ const CONE=new THREE.ConeGeometry(1,1,7),TRUNK=cyl(.6,1,1,5),ROCK=new THREE.Dode
 
 // Merger: collects many small parts into ONE geometry, so they cost one draw call.
 // add(shape, colour, {p:[x,y,z], r:[rx,ry,rz] or q:quaternion, s:scale or [sx,sy,sz], k:brightness,
-//                     shadow:true, smooth:true (organic shapes), ao:fn(x,y,z) -> darkening 0..1})
+//                     shadow:true, smooth:true (organic shapes), ao:fn(x,y,z) -> darkening 0..1,
+//                     gr: how much GRIT shows on it (default 1, 0 = clean paint/lights, up to 1.4 = filthy)})
 class Merger{
- constructor(){this.pos=[];this.nor=[];this.col=[]}
+ constructor(){this.pos=[];this.nor=[];this.col=[];this.gr=[]}
  add(geo,hex,o={}){
   const g=geo.index?geo.toNonIndexed():new THREE.BufferGeometry().copy(geo);
   if(o.q)_q.copy(o.q);else _q.setFromEuler(_eu.set(...(o.r||[0,0,0])));
@@ -310,10 +383,10 @@ class Merger{
   _mx.compose(_p.set(...(o.p||[0,0,0])),_q,typeof s=='number'?_s.set(s,s,s):_s.set(...s));
   g.applyMatrix4(_mx);
   if(!o.smooth)g.computeVertexNormals();                         // hard surface: each triangle gets its own normal (crisp facets)
-  const P=g.attributes.position,N=g.attributes.normal;_col.setHex(hex);if(o.k)_col.multiplyScalar(o.k);
+  const P=g.attributes.position,N=g.attributes.normal,gr=o.gr===undefined?1:o.gr;_col.setHex(hex);if(o.k)_col.multiplyScalar(o.k);
   if(o.cf)_c2.setHex(o.c2);                                      // cf(x,y,z) -> 0..1 blends toward colour c2 per vertex (ground: grass -> dirt)
   for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),z=P.getZ(i),a=o.ao?o.ao(x,y,z):1;
-   this.pos.push(x,y,z);this.nor.push(N.getX(i),N.getY(i),N.getZ(i));
+   this.pos.push(x,y,z);this.nor.push(N.getX(i),N.getY(i),N.getZ(i));this.gr.push(gr);
    if(o.cf){const t=o.cf(x,y,z);this.col.push((_col.r+(_c2.r-_col.r)*t)*a,(_col.g+(_c2.g-_col.g)*t)*a,(_col.b+(_c2.b-_col.b)*t)*a)}
    else this.col.push(_col.r*a,_col.g*a,_col.b*a)}
   if(o.shadow)castShadow(P);
@@ -321,16 +394,32 @@ class Merger{
  // a limb or barrel: tapered cylinder from point a (radius r) to point b (radius o.r2)
  seg(a,b,r,hex,o={}){const A=new V3(...a),dir=new V3(...b).sub(A),len=dir.length();
   return this.add(cyl(o.r2||r,r,len,o.n||6),hex,Object.assign({},o,{p:[A.x+dir.x/2,A.y+dir.y/2,A.z+dir.z/2],q:new THREE.Quaternion().setFromUnitVectors(UPV,dir.normalize())}))}
- // bake=true: light multiplied in now (static scenery, drawn unlit). bake=false: raw colours, lit live (moving things).
+ // bake=true: light multiplied in now (static scenery, drawn unlit, gets grit). bake=false: raw colours, lit live (moving things).
  geometry(bake){const col=new Float32Array(this.col);
   if(bake){const n=new V3(),s=new THREE.Color();for(let i=0;i<col.length;i+=3){shade(n.set(this.nor[i],this.nor[i+1],this.nor[i+2]),s);col[i]*=s.r;col[i+1]*=s.g;col[i+2]*=s.b}}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(this.pos,3));
   g.setAttribute('normal',new THREE.Float32BufferAttribute(this.nor,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  if(bake)g.setAttribute('gr',new THREE.Float32BufferAttribute(this.gr,1));
   g.computeBoundingSphere();return g}}
+// WORLD = scenery split into CHUNKS: 3x3 blocks of the city, a 15-tile grid outside it. Each chunk is one mesh (+ one shadow mesh).
+// The city is 4x bigger than 1.4's arena, so instead of drawing all of it every frame, the GPU skips every chunk that's behind you
+// or off to the side (three.js frustum culling, which only works per mesh). o.key puts something in a named chunk of its own.
+class World{
+ constructor(){this.c=new Map();this.meshes=[]}
+ at(o){const p=o.p||[0,0,0],x=p[0],z=p[2],k=o.key||(x>=0&&z>=0&&x<MW&&z<MW?'i'+((x/(MW/3)|0)+(z/(MW/3)|0)*9):'o'+(Math.floor(x/15)+','+Math.floor(z/15)));
+  let e=this.c.get(k);if(!e)this.c.set(k,e={m:new Merger(),sh:[]});return e}
+ add(g,h,o={}){const e=this.at(o),keep=SHADOW_TRIS;SHADOW_TRIS=e.sh;e.m.add(g,h,o);SHADOW_TRIS=keep;return this}
+ finish(){const sh=[];for(const[k,e]of this.c){                // all chunks' shadows go into ONE mesh: flat and cheap, and one draw call instead of many
+   if(e.m.pos.length){const me=new THREE.Mesh(e.m.geometry(true),WORLDM);me.userData.k=k;scene.add(me);this.meshes.push(me)}
+   for(const v of e.sh)sh.push(v)}
+  if(sh.length){const s=shadowMesh(sh);s.geometry.computeBoundingSphere();scene.add(s);this.meshes.push(s)}
+  this.c=null;return this}
+ verts(){return this.meshes.reduce((a,m)=>a+(m.material===WORLDM?m.geometry.attributes.position.count:0),0)}
+ dispose(){for(const me of this.meshes){scene.remove(me);me.geometry.dispose()}this.meshes=[]}}
 
 // BAKED AMBIENT OCCLUSION (soft darkening where light can't reach). Computed once per vertex at load: costs nothing per frame.
 const sstep=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t)};
-const AO_BASE=(x,y,z)=>.62+.38*sstep(0,.45,y);                  // anything standing on the floor darkens toward its base
+const AO_BASE=(x,y,z)=>.6+.4*sstep(0,.45,y);                  // anything standing on the floor darkens toward its base
 function wallDist(x,z){let d=9;for(let cy=Math.floor(z)-1;cy<=Math.floor(z)+1;cy++)for(let cx=Math.floor(x)-1;cx<=Math.floor(x)+1;cx++)
  if(isWall(cx,cy)){const dx=Math.max(cx-x,0,x-cx-1),dz=Math.max(cy-z,0,z-cy-1);d=Math.min(d,Math.hypot(dx,dz))}return d}
 const AO_FLOOR=(x,y,z)=>.6+.4*sstep(0,.75,wallDist(x,z));       // the floor darkens softly near walls
@@ -345,122 +434,200 @@ function hull(p){p.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0
  for(let i=p.length-1;i>=0;i--){const q=p[i];while(hi.length>1&&cr(hi[hi.length-2],hi[hi.length-1],q)<=0)hi.pop();hi.push(q)}
  return lo.slice(0,-1).concat(hi.slice(0,-1))}
 
-// ============================== 5. WORLD (all of it becomes one mesh) ==============================
-// The STATIC part (ground, floodlights, everything outside the walls) is built once. The ARENA part (floor slabs, cover,
-// paint, rooftop clutter) depends on the layout, so buildArena() rebuilds it for every match: still one mesh + one shadow mesh.
-let world=new Merger();
-const WORLDM=bmat(0xffffff,{vertexColors:true}),SHADOWM=new THREE.MeshBasicMaterial({color:0x10142a,transparent:true,opacity:.55,depthWrite:false,side:THREE.DoubleSide,
+// ============================== 5. WORLD (a few chunk meshes, see World) ==============================
+// The STATIC part (ground, floodlights, everything outside the walls, the distant skyline) is built once. The CITY part
+// (floors, cover, buildings, landmarks, paint) depends on the layout, so buildArena() rebuilds it for every match.
+const SHADOWM=new THREE.MeshBasicMaterial({color:0x141a30,transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide,
  stencilWrite:true,stencilRef:1,stencilFunc:THREE.NotEqualStencilFunc,stencilZPass:THREE.ReplaceStencilOp});
 const shadowMesh=t=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(t,3));return new THREE.Mesh(g,SHADOWM)};
-// GROUND: one big grid with soft colour variation (two waves of noise), worn into dry dirt around the arena walls.
-const DIRT=0xb7a17a,gnoise=(x,z)=>.5+.25*Math.sin(x*.23+z*.11)*Math.sin(z*.19-x*.07)+.25*Math.sin(x*.61-z*.47+1.3)*Math.sin(z*.53+x*.29);
-world.add(new THREE.PlaneGeometry(300,300,30,30),GRASS,{p:[10,-.02,10],r:[-Math.PI/2,0,0],ao:(x,y,z)=>.84+.18*gnoise(x,z),
- c2:DIRT,cf:(x,y,z)=>{const d=Math.max(Math.abs(x-10),Math.abs(z-10));return(1-sstep(10,20,d))*(.75+.25*gnoise(x*2,z*2))}});
-world.add(new THREE.BoxGeometry(20,.1,20),SEAMC,{p:[10,-.05,10]});                          // dark base: shows as seams between slabs
+const N4=[[1,0],[-1,0],[0,1],[0,-1]];
+let world=new World();
+// GROUND: one big grid with soft colour variation (two waves of noise), worn into dry dirt around the city walls.
+const DIRT=0xab9672,gnoise=(x,z)=>.5+.25*Math.sin(x*.23+z*.11)*Math.sin(z*.19-x*.07)+.25*Math.sin(x*.61-z*.47+1.3)*Math.sin(z*.53+x*.29);
+world.add(new THREE.PlaneGeometry(500,500,40,40),GRASS,{p:[MC,-.02,MC],r:[-Math.PI/2,0,0],key:'ground',gr:1.2,ao:(x,y,z)=>.84+.18*gnoise(x,z),
+ c2:DIRT,cf:(x,y,z)=>{const d=Math.max(Math.abs(x-MC),Math.abs(z-MC));return(1-sstep(MC,MC+12,d))*(.75+.25*gnoise(x*2,z*2))}});
+world.add(new THREE.BoxGeometry(MW,.1,MW),SEAMC,{p:[MC,-.05,MC],key:'ground'});                     // dark base: shows as seams between slabs
 // FLOODLIGHT POLES on the outer wall: tall thin silhouettes against the sky, aimed at the middle.
-for(const[x,y]of[[0,0],[19,0],[0,19],[19,19],[10,0],[0,10],[19,10],[9,19]]){const h=1.35,cx=x+.5,cz=y+.5,ry=Math.atan2(10-cx,10-cz);
- world.add(cyl(.035,.05,2.3,6),0x55585e,{p:[cx,h+1.15,cz],shadow:true,smooth:true});
- world.add(cbox(.34,.14,.2,.02),0x3d4046,{p:[cx,h+2.32,cz],r:[.5,ry,0],shadow:true});
- world.add(cbox(.28,.08,.02,.005),0xfff3d6,{p:[cx+Math.sin(ry)*.105,h+2.27,cz+Math.cos(ry)*.105],r:[.5,ry,0],k:1.7})}  // lamp face (bright)
-// Outside the arena: trees, rocks, grass. Placed in a ring around it, never inside.
-const outside=()=>{for(;;){const a=rr(0,6.283),r=rr(13,42),x=10+Math.cos(a)*r,z=10+Math.sin(a)*r;if(Math.abs(x-10)>11.2||Math.abs(z-10)>11.2)return[x,z]}};
+for(const[x,y]of[[0,0],[MW-1,0],[0,MW-1],[MW-1,MW-1],[10,0],[29,0],[0,10],[0,29],[MW-1,10],[MW-1,29],[10,MW-1],[29,MW-1]]){const h=1.6,cx=x+.5,cz=y+.5,ry=Math.atan2(MC-cx,MC-cz);
+ world.add(cyl(.035,.05,2.3,6),0x55585e,{p:[cx,h+1.15,cz],shadow:true,smooth:true,key:'lights'});
+ world.add(cbox(.34,.14,.2,.02),0x3d4046,{p:[cx,h+2.32,cz],r:[.5,ry,0],shadow:true,key:'lights'});
+ world.add(cbox(.28,.08,.02,.005),0xfff3d6,{p:[cx+Math.sin(ry)*.105,h+2.27,cz+Math.cos(ry)*.105],r:[.5,ry,0],k:1.7,gr:0,key:'lights'})}  // lamp face (bright)
+// Outside the walls: trees, rocks, grass. Placed in a ring around the city, never inside.
+const outside=(r0=MC+3,r1=MC+40)=>{for(;;){const a=rr(0,6.283),r=rr(r0,r1),x=MC+Math.cos(a)*r,z=MC+Math.sin(a)*r;if(Math.abs(x-MC)>MC+1.2||Math.abs(z-MC)>MC+1.2)return[x,z]}};
 function pine(x,z,s){world.add(TRUNK,BARK,{p:[x,.3*s,z],s:[.08*s,.6*s,.08*s],shadow:true,smooth:true,ao:AO_BASE});const g=PINE[rnd()*2|0];
- for(let i=0;i<3;i++)world.add(CONE,g,{p:[x,(.62+i*.36)*s,z],s:[(.62-i*.15)*s,(.8-i*.13)*s,(.62-i*.15)*s],r:[0,rnd()*6,0],k:1+i*.07,shadow:true,smooth:true})}
+ for(let i=0;i<3;i++)world.add(CONE,g,{p:[x,(.62+i*.36)*s,z],s:[(.62-i*.15)*s,(.8-i*.13)*s,(.62-i*.15)*s],r:[0,rnd()*6,0],k:1+i*.07,shadow:true,smooth:true,gr:.5})}
 function leafy(x,z,s){world.add(TRUNK,BARK,{p:[x,.35*s,z],s:[.09*s,.7*s,.09*s],shadow:true,smooth:true,ao:AO_BASE});
- world.add(ico(1,1),LEAF[0],{p:[x,.95*s,z],s:[.55*s,.47*s,.55*s],r:[rnd()*6,rnd()*6,0],shadow:true,smooth:true});
- world.add(ico(1,1),LEAF[1],{p:[x+.18*s,1.2*s,z-.1*s],s:[.36*s,.32*s,.36*s],r:[rnd()*6,rnd()*6,0],shadow:true,smooth:true})}
-for(let i=0;i<48;i++){const[x,z]=outside(),s=rr(.9,1.7);(rnd()<.6?pine:leafy)(x,z,s)}
-for(let i=0;i<40;i++){const[x,z]=outside(),s=rr(.6,1.8);world.add(ROCK,ROCKC,{p:[x,.08*s,z],s:[.35*s,.22*s,.3*s],r:[rnd()*6,rnd()*6,rnd()*6],k:rr(.85,1.1),shadow:true,ao:AO_BASE})}
-for(let i=0;i<26;i++){const[x,z]=outside(),s=rr(1,3);world.add(DISC,GRASS,{p:[x,0,z],s:[s,1,s*rr(.6,1)],r:[0,rnd()*6,0],k:rr(.82,.9)})}             // darker grass patches
-for(let i=0;i<140;i++){const[x,z]=outside();world.add(TUFT,GRASS,{p:[x,.05,z],s:[.05,.12,.05],r:[rr(-.3,.3),rnd()*6,rr(-.3,.3)],k:rr(.85,1.15)})} // grass tufts
-// SANDBAG + BARREL clutter just outside the walls: breaks up the straight edge where the arena meets the field
-for(let i=0;i<14;i++){const side=i%4,t=rr(1,19),o=rr(20.6,21.6),x=side==0?t:side==1?t:side==2?-o+20:o,z=side==0?-o+20:side==1?o:t;
+ world.add(ico(1,1),LEAF[0],{p:[x,.95*s,z],s:[.55*s,.47*s,.55*s],r:[rnd()*6,rnd()*6,0],shadow:true,smooth:true,gr:.5});
+ world.add(ico(1,1),LEAF[1],{p:[x+.18*s,1.2*s,z-.1*s],s:[.36*s,.32*s,.36*s],r:[rnd()*6,rnd()*6,0],shadow:true,smooth:true,gr:.5})}
+for(let i=0;i<60;i++){const[x,z]=outside(),s=rr(.9,1.7);(rnd()<.6?pine:leafy)(x,z,s)}
+for(let i=0;i<50;i++){const[x,z]=outside(),s=rr(.6,1.8);world.add(ROCK,ROCKC,{p:[x,.08*s,z],s:[.35*s,.22*s,.3*s],r:[rnd()*6,rnd()*6,rnd()*6],k:rr(.85,1.1),shadow:true,ao:AO_BASE})}
+for(let i=0;i<34;i++){const[x,z]=outside(),s=rr(1,3);world.add(DISC,GRASS,{p:[x,0,z],s:[s,1,s*rr(.6,1)],r:[0,rnd()*6,0],k:rr(.82,.9)})}             // darker grass patches
+for(let i=0;i<160;i++){const[x,z]=outside(MC+2,MC+24);world.add(TUFT,GRASS,{p:[x,.05,z],s:[.05,.12,.05],r:[rr(-.3,.3),rnd()*6,rr(-.3,.3)],k:rr(.85,1.15),gr:.4})} // grass tufts
+// SANDBAG + BARREL clutter just outside the walls: breaks up the straight edge where the city meets the field
+for(let i=0;i<24;i++){const side=i%4,t=rr(1,MW-1),o=rr(MW+.6,MW+1.6),x=side==0?t:side==1?t:side==2?-o+MW:o,z=side==0?-o+MW:side==1?o:t;
  if(rnd()<.5){for(let j=0;j<3;j++)world.add(ico(1,0),0xa89a76,{p:[x+(j-1)*.17,.05,z],s:[.09,.05,.06],r:[0,side*1.57,0],shadow:true,smooth:true,ao:AO_BASE});
   world.add(ico(1,0),0xb3a57f,{p:[x,.13,z],s:[.09,.05,.06],r:[0,side*1.57,0],shadow:true,smooth:true})}
- else{const c=[0x4f6a5a,0xb4553d,0x8b8e93][i%3];world.add(cyl(.07,.07,.2,8),c,{p:[x,.1,z],shadow:true,ao:AO_BASE});world.add(cyl(.072,.072,.012,8),c,{p:[x,.2,z],k:.8})}}
-for(let i=0;i<20;i++){const a=i/20*6.283+rr(-.1,.1),r=rr(48,62);                          // rolling hills fill the horizon
- world.add(ico(1,1),GRASS,{p:[10+Math.cos(a)*r,-1.2,10+Math.sin(a)*r],s:[rr(9,15),rr(3,6),rr(9,15)],r:[0,rnd()*6,0],k:rr(.78,.92),smooth:true})}
-for(let i=0;i<14;i++){ // ring of low-poly mountains with snow caps
- const a=i/14*6.283,r=70+(i%3)*8,h=24+(i*7%13),w=11+(i%4)*2,mx=10+Math.cos(a)*r,mz=10+Math.sin(a)*r;
- world.add(new THREE.ConeGeometry(w,h,5),MTN[i%2],{p:[mx,h/2-1,mz],r:[0,i,0]});
- world.add(new THREE.ConeGeometry(w*.32,h*.28,5),0xf4f6ff,{p:[mx,h-1-h*.14,mz],r:[0,i,0]})}
-scene.add(new THREE.Mesh(world.geometry(true),WORLDM),shadowMesh(SHADOW_TRIS));
+ else{const c=[0x4f6a5a,0xa5513c,0x8b8e93][i%3];world.add(cyl(.07,.07,.2,8),c,{p:[x,.1,z],shadow:true,ao:AO_BASE,gr:1.3});world.add(cyl(.072,.072,.012,8),c,{p:[x,.2,z],k:.8})}}
+// SKYLINE: low industrial blocks, chimneys and a water tower beyond the walls. Simple boxes, half lost in the haze:
+// they say "this is part of a bigger, abandoned city", cost almost nothing, and give you a horizon to navigate by.
+for(let i=0;i<34;i++){const a=i/34*6.283+rr(-.05,.05),r=rr(33,46),x=MC+Math.cos(a)*r,z=MC+Math.sin(a)*r,w=rr(2.5,5),d=rr(2.5,5),h=rr(2.5,7),ry=Math.atan2(MC-x,MC-z),c=[0x9c9285,0x8f8a82,0xa58a70,0x7f8784][i%4];
+ world.add(new THREE.BoxGeometry(w,h,d),c,{p:[x,h/2,z],r:[0,ry,0],gr:1.4,k:rr(.85,1),key:'far'});
+ if(rnd()<.35)world.add(cyl(.25,.32,h*.7,8),0x7a6a5c,{p:[x+rr(-1,1),h+h*.35,z+rr(-1,1)],gr:1.4,key:'far'});            // chimney
+ else if(rnd()<.4)world.add(new THREE.BoxGeometry(w*.4,.8,d*.4),c,{p:[x,h+.4,z],r:[0,ry,0],k:.9,gr:1.3,key:'far'})}                          // roof plant room
+{const x=MC-34,z=MC+8;for(const[a,b]of[[-1,-1],[1,-1],[-1,1],[1,1]])world.add(cyl(.08,.1,6,5),0x5d6168,{p:[x+a*1.1,3,z+b*1.1],shadow:true});
+ world.add(cyl(1.8,1.8,2.6,12),0x8a8378,{p:[x,7.3,z],shadow:true,smooth:true,gr:1.4});world.add(new THREE.ConeGeometry(1.9,1,12),0x6d6559,{p:[x,9.1,z],gr:1.3})}  // water tower
+for(let i=0;i<24;i++){const a=i/24*6.283+rr(-.1,.1),r=rr(60,76);                          // rolling hills fill the horizon
+ world.add(ico(1,1),GRASS,{p:[MC+Math.cos(a)*r,-1.2,MC+Math.sin(a)*r],s:[rr(10,17),rr(3,6),rr(10,17)],r:[0,rnd()*6,0],k:rr(.78,.92),smooth:true,gr:.8,key:'far'})}
+for(let i=0;i<14;i++){ // ring of mountains, half lost in the haze
+ const a=i/14*6.283,r=98+(i%3)*8,h=30+(i*7%13),w=14+(i%4)*2,mx=MC+Math.cos(a)*r,mz=MC+Math.sin(a)*r;
+ world.add(new THREE.ConeGeometry(w,h,5),MTN[i%2],{p:[mx,h/2-1,mz],r:[0,i,0],gr:.5,key:'far'});
+ world.add(new THREE.ConeGeometry(w*.32,h*.28,5),0xf4f6ff,{p:[mx,h-1-h*.14,mz],r:[0,i,0],gr:0,key:'far'})}
+const STATIC=world.finish(),STATIC_VERTS=STATIC.verts();
 
-// ---- ARENA (rebuilt per match) ----
-const SLAB=new THREE.PlaneGeometry(.97,.97);
+// ---- CITY (rebuilt per match) ----
+const SLAB=new THREE.PlaneGeometry(.97,.97),TILE=new THREE.PlaneGeometry(.485,.485),FULL=new THREE.PlaneGeometry(1,1),FR=[-Math.PI/2,0,0];
 const lineSeg=(x,y)=>{const ew=isWall(x-1,y)||isWall(x+1,y),ns=isWall(x,y-1)||isWall(x,y+1);return ew!=ns}; // part of a barrier line (vs a pillar)
 function concrete(x,y){
  const h=wallH(x,y),c=cellColor(x,y),cx=x+.5,cz=y+.5,k=rr(.95,1.03);
  const ew=isWall(x-1,y)||isWall(x+1,y),ns=isWall(x,y-1)||isWall(x,y+1);
  if(ew!=ns){ // part of a line: a barrier segment (straight lower half, sloped top), with small gaps between segments
   const b=.03,h1=h*.3,ry=ew?Math.PI/2:0;
-  world.add(prism([[-.47+b,b],[.47-b,b],[.47-b,h1],[.2-b,h-b],[-.2+b,h-b],[-.47+b,h1]],.97,b),c,{p:[cx,0,cz],r:[0,ry,0],k,shadow:true,ao:AO_BASE});
-  if(!isBorder(x,y))world.add(cbox(.955,.06,.975,.005),HAZARD,{p:[cx,h1*.55,cz],r:[0,ry,0]}); // painted band
+  world.add(prism([[-.47+b,b],[.47-b,b],[.47-b,h1],[.2-b,h-b],[-.2+b,h-b],[-.47+b,h1]],.97,b),c,{p:[cx,0,cz],r:[0,ry,0],k,shadow:true,ao:AO_BASE,gr:1.2});
+  if(!isBorder(x,y))world.add(cbox(.955,.06,.975,.005),HAZARD,{p:[cx,h1*.55,cz],r:[0,ry,0],gr:1.3}); // painted band (worn)
  }else{      // a corner or a lone block: square pillar with a cap
-  world.add(cbox(.96,h-.06,.96,.05),c,{p:[cx,(h-.06)/2,cz],k,shadow:true,ao:AO_BASE});
+  world.add(cbox(.96,h-.06,.96,.05),c,{p:[cx,(h-.06)/2,cz],k,shadow:true,ao:AO_BASE,gr:1.2});
   world.add(cbox(1,.06,1,.015),c,{p:[cx,h-.03,cz],k:k*.9});
-  if(!isBorder(x,y))for(const[nx,nz]of[[1,0],[-1,0],[0,1],[0,-1]])if(!isWall(x+nx,y+nz))   // hazard chevrons at the foot of free-standing pillars
-   for(let i=0;i<3;i++){const o=-.3+i*.3;world.add(CHEV,i&1?0x2b2a28:HAZARD,{p:[cx+nx*.485+(nz?o:0),.12,cz+nz*.485+(nx?o:0)],r:[0,nx?Math.PI/2:0,.78],ao:AO_BASE})}
+  if(!isBorder(x,y))for(const[nx,nz]of N4)if(!isWall(x+nx,y+nz))   // hazard chevrons at the foot of free-standing pillars
+   for(let i=0;i<3;i++){const o=-.3+i*.3;world.add(CHEV,i&1?0x2b2a28:HAZARD,{p:[cx+nx*.485+(nz?o:0),.12,cz+nz*.485+(nx?o:0)],r:[0,nx?Math.PI/2:0,.78],ao:AO_BASE,gr:1.3})}
  }}
 const RIB=new THREE.BoxGeometry(.03,.86,.07),RAIL=new THREE.BoxGeometry(.04,.05,1),ROD=cyl(.011,.011,.84,4),BAR=new THREE.BoxGeometry(.8,.022,.02),CHEV=new THREE.BoxGeometry(.12,.12,.012),PLINE=new THREE.BoxGeometry(1,.005,.035);   // plain boxes for flat paint/hardware: a third of the triangles of a bevelled box
 function container(x,y){
  const c=cellColor(x,y),h=CELL_H[2],cx=x+.5,cz=y+.5;
- world.add(cbox(.96,h-.04,.96,.012),c,{p:[cx,(h-.04)/2,cz],shadow:true,ao:AO_BASE});
- for(const[nx,nz]of[[1,0],[-1,0],[0,1],[0,-1]]){ if(cell(x+nx,y+nz)==2)continue;  // only outward-facing sides get detail
+ world.add(cbox(.96,h-.04,.96,.012),c,{p:[cx,(h-.04)/2,cz],shadow:true,ao:AO_BASE,gr:1.35});
+ for(const[nx,nz]of N4){ if(cell(x+nx,y+nz)==2)continue;  // only outward-facing sides get detail
   const ry=nx?0:Math.PI/2,px=-nz,pz=nx;                                        // (px,pz) = sideways along this face
   const end=cell(x-nx,y-nz)==2&&cell(x+px,y+pz)!=2&&cell(x-px,y-pz)!=2;         // the narrow END of a container: cargo doors instead of ribs
   if(end){
    world.add(CHEV,0x1e1c1a,{p:[cx+nx*.486,h*.47,cz+nz*.486],r:[0,ry+Math.PI/2,0],s:[.1,7.2,1],ao:AO_BASE});                       // door seam
    for(const o of[-.32,-.12,.12,.32])world.add(ROD,0x6a6560,{p:[cx+nx*.495+px*o,h*.47,cz+nz*.495+pz*o],smooth:true,ao:AO_BASE}); // locking rods
    for(const yy of[.3,.66])world.add(BAR,0x4d4945,{p:[cx+nx*.5,h*yy,cz+nz*.5],r:[0,ry+Math.PI/2,0]})                         // cam bars
-  }else for(let i=0;i<5;i++){const o=-.4+i*.2;world.add(RIB,c,{p:[cx+nx*.485+(nz?o:0),h*.47,cz+nz*.485+(nx?o:0)],r:[0,ry,0],k:.88,ao:AO_BASE})} // corrugated ribs
+  }else for(let i=0;i<3;i++){const o=-.3+i*.3;world.add(RIB,c,{p:[cx+nx*.485+(nz?o:0),h*.47,cz+nz*.485+(nx?o:0)],r:[0,ry,0],k:.88,ao:AO_BASE,gr:1.35})} // corrugated ribs
   world.add(RAIL,c,{p:[cx+nx*.48,h-.025,cz+nz*.48],r:[0,ry,0],k:.8});                     // top rail
  }}
-const CRATE=cbox(.46,.46,.46,.02),STRAP=new THREE.BoxGeometry(.47,.035,.47);   // straps/ribs/paint are too small for bevels to show: plain boxes
+const CRATE=new THREE.BoxGeometry(.46,.46,.46),STRAP=new THREE.BoxGeometry(.47,.035,.47);   // straps/ribs/paint are too small for bevels to show: plain boxes
 function crates(x,y){ // two layers of four crates, slightly uneven like a real stack
  for(let layer=0;layer<2;layer++)for(let i=0;i<4;i++){
   const px=x+.5+(i&1?.24:-.24)+rr(-.012,.012),pz=y+.5+(i&2?.24:-.24)+rr(-.012,.012),py=layer*.47+.23,ry=rr(-.06,.06),k=rr(.88,1.06);
   world.add(CRATE,rnd()<.25?ARMY:WOOD,{p:[px,py,pz],r:[0,ry,0],k,shadow:true,ao:AO_BASE});
-  for(const dy of[-.13,.13])world.add(STRAP,WOOD_DARK,{p:[px,py+dy,pz],r:[0,ry,0],k,ao:AO_BASE});
+  world.add(STRAP,WOOD_DARK,{p:[px,py+(layer?.13:-.1),pz],r:[0,ry,0],k,ao:AO_BASE});
  }}
-const DASH=new THREE.BoxGeometry(.7,.006,.06),CRACK=new THREE.BoxGeometry(.45,.005,.014),LINE=PLINE;
-let arenaM=null,arenaS=null;
+// BUILDINGS: plaster blocks with storeys you can read from a distance (window rows, floor lines, a parapet on top).
+// Windows are flat panels (2 triangles each) so a street full of them stays cheap. Some are boarded up: grit.
+const PANE=new THREE.PlaneGeometry(.3,.38),DOOR=new THREE.PlaneGeometry(.3,.58),BOARD=new THREE.PlaneGeometry(.32,.07),SILL=new THREE.BoxGeometry(.38,.035,.05),BAND=new THREE.BoxGeometry(1.01,.045,.03);
+function building(x,y){const g=GROUP[y*MW+x],h=BH[g],c=cellColor(x,y),cx=x+.5,cz=y+.5,ruin=district(x,y)==2;
+ world.add(new THREE.BoxGeometry(1,h,1),c,{p:[cx,h/2,cz],k:.97+(g%5)*.015,shadow:true,ao:AO_BASE,gr:1.35});
+ const lit=new THREE.Color(c).multiplyScalar(1.12).getHex(),fl=Math.max(1,Math.floor(h/.9+.15));
+ for(const[nx,nz]of N4){if(isWall(x+nx,y+nz))continue;                         // only the street-facing sides get detail
+  const ry=nx?nx*Math.PI/2:(nz>0?0:Math.PI),fx=cx+nx*.508,fz=cz+nz*.508;
+  for(let f=0;f<fl;f++){const wy=.48+f*.88;if(wy+.2>h-.05)break;const r=rnd();
+   if(f==0&&r<.28&&!ruin){world.add(DOOR,0x3a2e27,{p:[fx,.3,fz],r:[0,ry,0],gr:1.2});continue}               // street door
+   world.add(PANE,r<.15?0x15161a:0x2b2e33,{p:[fx,wy,fz],r:[0,ry,0],k:rr(.85,1.1),gr:.6});                    // window glass (dark)
+   if(r>.82||(ruin&&r>.5))for(let j=0;j<2;j++)world.add(BOARD,WOOD,{p:[fx+nx*.006,wy-.07+j*.14,fz+nz*.006],r:[0,ry,rr(-.2,.2)],k:rr(.8,1),gr:1.3}); // boarded up
+   world.add(SILL,lit,{p:[cx+nx*.52,wy-.21,cz+nz*.52],r:[0,ry,0]})}
+  for(let f=1;f<fl;f++){const by=f*.88+.04;if(by<h-.1)world.add(BAND,lit,{p:[cx+nx*.512,by,cz+nz*.512],r:[0,ry,0],k:.95})}  // floor line
+ }
+ if(ruin){for(let i=0;i<3;i++)world.add(CHUNK,c,{p:[cx+rr(-.35,.35),h+rr(-.05,.08),cz+rr(-.35,.35)],s:[rr(.1,.2),rr(.08,.18),rr(.1,.2)],r:[rnd()*6,rnd()*6,0],k:rr(.8,1),shadow:true});return} // broken top
+ world.add(new THREE.BoxGeometry(1.03,.09,1.03),lit,{p:[cx,h+.02,cz],k:.9});                         // parapet cap
+ if(rnd()<.12)world.add(cbox(.34,.2,.26,.02),0x8b8e93,{p:[cx+rr(-.2,.2),h+.17,cz+rr(-.2,.2)],r:[0,rnd()*2,0],shadow:true}); // AC unit on the roof
+}
+const DASH=new THREE.BoxGeometry(.5,.006,.05),EDGE=new THREE.BoxGeometry(1,.006,.04),CRACK=new THREE.BoxGeometry(.45,.005,.014),LINE=PLINE;
+const CHUNK=new THREE.OctahedronGeometry(1,0),SPOT=new THREE.CircleGeometry(1,7).rotateX(-Math.PI/2);   // rubble chunk (8 triangles) and flat stain (7)
+// OUTER WALL: four long barriers (same profile as the cover barriers) instead of 152 separate segments: ~40x fewer triangles.
+// Faint vertical seams every tile keep the segmented look. Bullets, holes and collision still use the grid, so nothing else changes.
+function borderWalls(){const h=1.6,b=.03,h1=h*.3,L=MW,P2=prism([[-.47+b,b],[.47-b,b],[.47-b,h1],[.2-b,h-b],[-.2+b,h-b],[-.47+b,h1]],L,b);
+ for(const[x,z,ry]of[[MC,.5,Math.PI/2],[MC,MW-.5,Math.PI/2],[.5,MC,0],[MW-.5,MC,0]])world.add(P2,BORDER_CONC,{p:[x,0,z],r:[0,ry,0],shadow:true,ao:AO_BASE,gr:1.3,key:'border'});
+ const SEAM=new THREE.PlaneGeometry(.016,h1*.94),f=.979;                      // seams on the inside face only (the side you see)
+ for(let i=1;i<MW;i++)for(const[x,z,ry]of[[i,f,0],[i,MW-f,Math.PI],[f,i,Math.PI/2],[MW-f,i,-Math.PI/2]])world.add(SEAM,0x5d5850,{p:[x,h1/2,z],r:[0,ry,0],gr:0,key:'border'})}
+let arena=null,CITY_VERTS=0;
 function buildArena(){
- groups();world=new Merger();SHADOW_TRIS=[];
- for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(!isWall(x,y))world.add(SLAB,SLABC,{p:[x+.5,.004,y+.5],r:[-Math.PI/2,0,0],k:rr(.93,1.04),ao:AO_FLOOR}); // concrete slabs: slightly different shades, darker near walls
- for(let y=0;y<20;y++)for(let x=0;x<20;x++){const t=cell(x,y);if(t==1)concrete(x,y);else if(t==2)container(x,y);else if(t==3)crates(x,y)}
- // FLOOR MARKINGS: dashed lane paint inside the outer wall, oil stains, cracks and painted parking bays. They break up the big floor
- // and help you judge distance. Flat, so they never block movement or bullets.
- for(let i=1;i<19;i++)for(const[x,z,ry]of[[i+.5,1.4,0],[i+.5,18.6,0],[1.4,i+.5,Math.PI/2],[18.6,i+.5,Math.PI/2]])
-  if(!isWall(Math.floor(x),Math.floor(z)))world.add(DASH,0xd2a947,{p:[x,.01,z],r:[0,ry,0],ao:AO_FLOOR});
- for(let i=0;i<40;i++){const x=rr(1.5,18.5),z=rr(1.5,18.5);if(isWall(Math.floor(x),Math.floor(z)))continue;
-  if(i<16)world.add(DISC,0x8d857a,{p:[x,.008,z],s:[rr(.15,.45),1,rr(.12,.3)],r:[0,rnd()*6,0],k:rr(.85,1),ao:AO_FLOOR});      // stains
-  else world.add(CRACK,0x7d766c,{p:[x,.009,z],r:[0,rnd()*6,0],s:[rr(.6,1.4),1,1],ao:AO_FLOOR})}                               // cracks
- for(let n=0,k=0;n<3&&k<60;k++){const x=2+(rnd()*15|0),y=2+(rnd()*15|0),hz=rnd()<.5;                                          // parking bays: open 2x1 spots
-  if(cell(x,y)||cell(x+(hz?1:0),y+(hz?0:1)))continue;n++;const cx=x+(hz?1:.5),cz=y+(hz?.5:1),w=hz?2:1,d=hz?1:2;
+ groups();if(arena)arena.dispose();world=new World();
+ // FLOORS: each district has its own ground, so you can tell where you are by looking down
+ for(let y=0;y<MW;y++)for(let x=0;x<MW;x++){if(isWall(x,y))continue;const d=district(x,y),c=[x+.5,.004,y+.5];
+  if(isRoad(x,y))world.add(FULL,ASPHALT,{p:c,r:FR,k:rr(.95,1.03),ao:AO_FLOOR,gr:1.3});                     // asphalt (no seams)
+  else if(d==4||d==1)for(let i=0;i<4;i++)world.add(TILE,d==4?PAVE:TOWNF,{p:[x+.25+(i&1)*.5,.004,y+.25+(i>>1)*.5],r:FR,k:rr(.9,1.05),ao:AO_FLOOR}); // paving stones
+  else if(d==2&&rnd()<.4)world.add(FULL,RUBBLEF,{p:c,r:FR,k:rr(.9,1.05),ao:AO_FLOOR,gr:1.3});                // ruins: bare earth where the floor broke up
+  else world.add(SLAB,d==3?DEPOTC:SLABC,{p:c,r:FR,k:rr(.92,1.04),ao:AO_FLOOR})}                             // concrete slabs
+ for(let y=0;y<MW;y++)for(let x=0;x<MW;x++){const t=cell(x,y),i=y*MW+x;if(LMK.has(i)||isBorder(x,y))continue;
+  if(t==1)concrete(x,y);else if(t==2)container(x,y);else if(t==3)crates(x,y);else if(t==4)building(x,y)}
+ borderWalls();
+ // ---------- LANDMARKS: one tall, unique shape per district, visible over the rooftops. You find your way by them. ----------
+ const RUST=0xb9772e,STEEL=0x5d6168;
+ // CONTAINER YARD: a gantry crane straddling the yard (its legs stand on two pillar cells)
+ for(const lx of[4.5,13.5]){world.add(cbox(.96,.5,.96,.04),CONCRETE,{p:[lx,.25,9.5],shadow:true,ao:AO_BASE,gr:1.2});
+  for(const dz of[-.16,.16])world.add(cbox(.12,4.2,.12,.015),HAZARD,{p:[lx,2.35,9.5+dz],shadow:true,gr:1.4});
+  for(let j=0;j<5;j++)world.add(cbox(.05,.05,.32,.01),RUST,{p:[lx,.9+j*.8,9.5],r:[.6*(j&1?1:-1),0,0],gr:1.4})}     // cross bracing
+ world.add(cbox(9.6,.34,.5,.03),HAZARD,{p:[9,4.55,9.5],shadow:true,gr:1.4});                                      // main beam
+ world.add(cbox(.6,.4,.6,.03),STEEL,{p:[7.2,4.2,9.5],shadow:true});                                                // trolley
+ world.add(cyl(.012,.012,2.2,4),0x222326,{p:[7.2,2.9,9.5],gr:0});world.add(cbox(.18,.12,.18,.02),HAZARD,{p:[7.2,1.75,9.5],shadow:true});   // cable + hook
+ // OLD TOWN: a water tower on the tallest roof
+ {let best=-1,bh=0;for(let i=0;i<NN;i++){const x=i%MW,y=i/MW|0;if(cell(x,y)==4&&district(x,y)==1&&BH[GROUP[i]]>bh){bh=BH[GROUP[i]];best=i}}
+  if(best>=0){const tx=best%MW+.5,tz=(best/MW|0)+.5;
+   for(const[a,b]of[[-1,-1],[1,-1],[-1,1],[1,1]])world.add(cyl(.03,.035,1.3,5),STEEL,{p:[tx+a*.3,bh+.65,tz+b*.3],shadow:true});
+   world.add(cyl(.5,.5,.9,12),0x8d6a4a,{p:[tx,bh+1.75,tz],shadow:true,smooth:true,gr:1.4});                    // wooden tank
+   world.add(new THREE.ConeGeometry(.56,.38,12),0x5d4636,{p:[tx,bh+2.39,tz],shadow:true});                      // roof
+   for(const yy of[1.45,2.05])world.add(cyl(.505,.505,.04,12),0x3a3c40,{p:[tx,bh+yy,tz],smooth:true})}}        // iron hoops
+ // THE RUINS: a broken radio mast, leaning, with a dead warning light
+ {const mx=8.5,mz=30.5,lean=.09;for(let j=0;j<7;j++){const y0=j*.8+1.15;
+  for(const[a,b]of[[-1,-1],[1,-1],[0,1]])world.add(cyl(.02,.02,.82,4),0x7b4a2f,{p:[mx+a*.18*(1-j*.1)+lean*j*.8,y0+.4,mz+b*.16*(1-j*.1)],r:[0,0,-lean],shadow:true,gr:1.3});
+  world.add(cbox(.4*(1-j*.1),.03,.03,.005),0x7b4a2f,{p:[mx+lean*j*.8,y0+.8,mz-.16],gr:1.3})}
+  world.add(cyl(.05,.05,.05,6),0x9a3a2a,{p:[mx+lean*5.6,6.8,mz],gr:0})}
+ // RAIL DEPOT: a big rusty fuel tank on its 2x2 block, with a ladder
+ world.add(cyl(.98,.98,1.7,16),0x9a8f80,{p:[32,.85,27],shadow:true,smooth:true,ao:AO_BASE,gr:1.4});
+ for(const yy of[.45,1.1])world.add(cyl(1,1,.06,16),RUST,{p:[32,yy,27],smooth:true,gr:1.4});
+ world.add(new THREE.ConeGeometry(1,.25,16),0x857a6c,{p:[32,1.82,27],shadow:true,gr:1.3});
+ for(const dx of[-.1,.1])world.add(cbox(.025,1.7,.025,.005),STEEL,{p:[32+dx,.85,28.02]});
+ for(let j=0;j<7;j++)world.add(cbox(.2,.02,.02,.004),STEEL,{p:[32,.15+j*.24,28.02]});
+ // CENTRAL PLAZA: a stepped plinth and a tall obelisk, with four lamps
+ world.add(cbox(2,.5,2,.04),0xb4a993,{p:[MC,.25,MC],shadow:true,ao:AO_BASE,gr:1.2});
+ world.add(cbox(1.6,.6,1.6,.04),0xa89d88,{p:[MC,.8,MC],shadow:true,gr:1.2});
+ for(const ry of[0,Math.PI/2])world.add(prism([[-.32,0],[.32,0],[.18,3.2],[0,3.45],[-.18,3.2]],.5,.02),0xc3b79f,{p:[MC,1.1,MC],r:[0,ry,0],shadow:!ry,gr:1.3});
+ for(const[a,b]of[[-1,-1],[1,-1],[-1,1],[1,1]]){const lx=MC+a*2.6,lz=MC+b*2.6;if(isWall(lx|0,lz|0))continue;
+  world.add(cyl(.025,.035,1.5,6),0x3a3d42,{p:[lx,.75,lz],shadow:true,smooth:true});world.add(ico(.07,1),0xffe7b8,{p:[lx,1.55,lz],k:1.5,gr:0,smooth:true})}
+ // ROAD PAINT: dashed centre lines, yellow edge lines (flat: never block you or bullets), plus oil stains and cracks everywhere
+ for(let i=1;i<MW-1;i++){if(Math.abs(i+.5-MC)<6.5)continue;
+  if(!isWall(MC,i)){world.add(DASH,0xd9cfa8,{p:[MC,.011,i+.5],r:[0,Math.PI/2,0],gr:1.4})}
+  if(!isWall(i,MC)){world.add(DASH,0xd9cfa8,{p:[i+.5,.011,MC],gr:1.4})}
+  for(const e of[17.06,22.94]){if(!isWall(e|0,i))world.add(EDGE,0xd2a947,{p:[e,.011,i+.5],r:[0,Math.PI/2,0],gr:1.4});if(!isWall(i,e|0))world.add(EDGE,0xd2a947,{p:[i+.5,.011,e],gr:1.4})}}
+ for(let i=0;i<130;i++){const x=rr(1.5,MW-1.5),z=rr(1.5,MW-1.5);if(isWall(Math.floor(x),Math.floor(z)))continue;
+  if(i<50)world.add(SPOT,0x7d766a,{p:[x,.008,z],s:[rr(.15,.5),1,rr(.12,.32)],r:[0,rnd()*6,0],k:rr(.85,1),ao:AO_FLOOR});      // stains
+  else world.add(CRACK,0x6d665c,{p:[x,.009,z],r:[0,rnd()*6,0],s:[rr(.6,1.4),1,1],ao:AO_FLOOR})}                               // cracks
+ for(let n=0,k=0;n<6&&k<200;k++){const x=2+(rnd()*35|0),y=2+(rnd()*35|0),hz=rnd()<.5,d0=district(x,y);                       // parking bays (yard + depot)
+  if((d0!=0&&d0!=3)||cell(x,y)||cell(x+(hz?1:0),y+(hz?0:1)))continue;n++;const cx=x+(hz?1:.5),cz=y+(hz?.5:1),w=hz?2:1,d=hz?1:2;
   world.add(LINE,0xe9e2d2,{p:[cx,.011,cz-d/2+.05],s:[w-.1,1,1]});world.add(LINE,0xe9e2d2,{p:[cx,.011,cz+d/2-.05],s:[w-.1,1,1]});
   world.add(LINE,0xe9e2d2,{p:[cx-w/2+.05,.011,cz],r:[0,Math.PI/2,0],s:[d-.1,1,1]});world.add(LINE,0xe9e2d2,{p:[cx+w/2-.05,.011,cz],r:[0,Math.PI/2,0],s:[d-.1,1,1]})}
+ // RUBBLE in the ruins: small broken chunks at the foot of walls
+ for(let k=0,n=0;k<900&&n<40;k++){const x=1+rnd()*(MW-2)|0,y=1+rnd()*(MW-2)|0;if(isWall(x,y)||district(x,y)!=2)continue;
+  const nb=N4.filter(([a,b])=>isWall(x+a,y+b));if(!nb.length)continue;const[a,b]=nb[0];n++;
+  for(let j=0;j<3;j++)world.add(CHUNK,j?0x8f8578:ROCKC,{p:[x+.5+a*.36+rr(-.2,.2),.02,y+.5+b*.36+rr(-.2,.2)],s:[rr(.04,.09),rr(.03,.07),rr(.04,.09)],r:[rnd()*6,rnd()*6,0],k:rr(.8,1.05),ao:AO_BASE})}
  // ROOFTOP DETAIL: vents and AC units on containers give the skyline something to read.
- for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(cell(x,y)==2&&rnd()<.55){
+ for(let y=0;y<MW;y++)for(let x=0;x<MW;x++)if(cell(x,y)==2&&rnd()<.45){
   const h=CELL_H[2];world.add(cbox(.34,.14,.24,.02),0x8b8e93,{p:[x+.5+rr(-.15,.15),h+.07,y+.5+rr(-.15,.15)],r:[0,rnd()*2,0],shadow:true});
   if(rnd()<.5)world.add(cyl(.05,.05,.22,8),0x6f7277,{p:[x+.5+rr(-.3,.3),h+.11,y+.5+rr(-.3,.3)],smooth:true})}
- const g=world.geometry(true);
- if(arenaM){scene.remove(arenaM,arenaS);arenaM.geometry.dispose();arenaS.geometry.dispose()}
- arenaM=new THREE.Mesh(g,WORLDM);arenaS=shadowMesh(SHADOW_TRIS);scene.add(arenaM,arenaS);world=null}
-buildArena();
-const CLOUDS=new THREE.Group();CLOUDS.position.set(10,0,10);scene.add(CLOUDS);   // turned slowly in draw(): the sky drifts
+ arena=world.finish();CITY_VERTS=arena.verts();world=null}
+genCity(seeded(4242));buildArena();
+const CLOUDS=new THREE.Group();CLOUDS.position.set(MC,0,MC);scene.add(CLOUDS);   // turned slowly in draw(): the sky drifts
 {const sky=new Merger(); // clouds: a few flattened low-poly blobs, drawn without fog so they stay crisp
- for(let i=0;i<9;i++){const a=i/9*6.283+rr(-.3,.3),r=rr(45,70),x=10+Math.cos(a)*r,z=10+Math.sin(a)*r,y=rr(24,32),s=rr(3,5);
-  for(let j=0;j<4;j++)sky.add(ico(1,1),0xffffff,{p:[x+(j-1.5)*s*.8,y+rr(-.4,.6)*s*.3,z+rr(-1,1)*s*.3],s:[s*rr(.7,1.1),s*.45,s*.8],r:[0,rnd()*6,0],k:rr(1.45,1.55),smooth:true})}
- const cm=new THREE.Mesh(sky.geometry(true),bmat(0xffffff,{vertexColors:true,fog:false}));cm.position.set(-10,0,-10);CLOUDS.add(cm)}
+ for(let i=0;i<10;i++){const a=i/10*6.283+rr(-.3,.3),r=rr(70,110),x=Math.cos(a)*r,z=Math.sin(a)*r,y=rr(30,42),s=rr(4,6.5);
+  for(let j=0;j<4;j++)sky.add(ico(1,1),0xffffff,{p:[x+(j-1.5)*s*.8,y+rr(-.4,.6)*s*.3,z+rr(-1,1)*s*.3],s:[s*rr(.7,1.1),s*.45,s*.8],r:[0,rnd()*6,0],k:rr(1.5,1.6),smooth:true})}
+ CLOUDS.add(new THREE.Mesh(sky.geometry(true),bmat(0xffffff,{vertexColors:true,fog:false})))}
 // STORM WALL: a tiny generated texture (64x32) of vertical energy streaks, brightest at the ground and fading upward. It scrolls
 // sideways in draw(), so the wall reads as moving energy instead of a flat tint. Same single draw call as before.
 const STORMTX=(()=>{const c=document.createElement('canvas');c.width=64;c.height=32;const g=c.getContext('2d'),gr=g.createLinearGradient(0,0,0,32);
  gr.addColorStop(0,'rgba(168,121,255,0)');gr.addColorStop(.55,'rgba(168,121,255,.22)');gr.addColorStop(1,'rgba(200,170,255,.55)');g.fillStyle=gr;g.fillRect(0,0,64,32);
  for(let i=0;i<14;i++){const x=Math.random()*64,w=1+Math.random()*2.5,h=10+Math.random()*22;g.fillStyle='rgba(225,205,255,'+(.12+Math.random()*.25)+')';g.fillRect(x,32-h,w,h)}
- const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.repeat.set(10,1);return t})();
-const ring=new THREE.Mesh(new THREE.CylinderGeometry(1,1,5,40,1,true),new THREE.MeshBasicMaterial({map:STORMTX,transparent:true,side:THREE.DoubleSide,depthWrite:false,fog:false}));
-ring.position.set(10,2.5,10);scene.add(ring);
+ const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.repeat.set(20,1);return t})();
+const ring=new THREE.Mesh(new THREE.CylinderGeometry(1,1,6,48,1,true),new THREE.MeshBasicMaterial({map:STORMTX,transparent:true,side:THREE.DoubleSide,depthWrite:false,fog:false}));
+ring.position.set(MC,3,MC);scene.add(ring);
 
 // ============================== 6. ENEMIES: human operators ==============================
 // Each operator = upper body (hips, torso, head, arms AND gun merged: they move together, like a real shooter's)
@@ -678,7 +845,7 @@ function updateCasings(dt){if(csOn<=0)return;csOn-=dt;
 // so you can see where your shots went. Each sits just in front of the actual surface of what it hit.
 const HOLES=40,holeM=new THREE.InstancedMesh(new THREE.CircleGeometry(.032,6),bmat(0x1d1a17,{transparent:true,opacity:.75,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}),HOLES);
 holeM.frustumCulled=false;holeM.count=0;scene.add(holeM);let holeI=0;
-const INSET=[0,.025,.018,.028];                                 // how far inside its grid cell each block type's real surface is
+const INSET=[0,.025,.018,.028,0];                                 // how far inside its grid cell each block type's real surface is
 const _hq=new THREE.Quaternion(),_hn=new V3(),_hs=new V3();
 function hole(p,nx,ny,nz,face){_hn.set(nx,ny,nz);_hq.setFromUnitVectors(_hz.set(0,0,1),_hn);const s=.7+Math.random()*.6;
  _mx.compose(_p.set(p.x+nx*(.004-face),p.y+ny*.004,p.z+nz*(.004-face)),_hq,_hs.set(s,s,s));holeM.setMatrixAt(holeI++%HOLES,_mx);holeM.count=Math.min(holeI,HOLES);holeM.instanceMatrix.needsUpdate=true}
@@ -736,19 +903,19 @@ const vib=n=>{try{navigator.vibrate&&navigator.vibrate(n)}catch(e){}};
 // Hit spheres [isHead, height, radius] matched to the new human bodies: head, chest, legs.
 const HS=[[1,.655,.075],[0,.48,.15],[0,.22,.12]],PL=document.querySelectorAll('.plates i'),dying=[];
 const dm=document.createElement('div');dm.style.cssText='position:absolute;left:50%;top:50%;width:6px;height:60px;margin:-90px 0 0 -3px;transform-origin:3px 90px;background:linear-gradient(#ff3050,transparent);border-radius:3px;opacity:0;transition:opacity .4s;pointer-events:none';$('hud').appendChild(dm);let dmT=0; // damage-direction bar
-const DG=new Int16Array(400),BQ=new Int16Array(400);let dgT=0;
-function flood(){DG.fill(-1);let h=0,t=0;const s0=(INTEL.y|0)*20+(INTEL.x|0);DG[s0]=0;BQ[t++]=s0; // BFS distance to your LAST KNOWN position (enemies aren't psychic)
- while(h<t){const c=BQ[h++],cx=c%20,cy=c/20|0;for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3);if(nx<0||ny<0||nx>19||ny>19)continue;const n=ny*20+nx;if(DG[n]<0&&!cell(nx,ny)){DG[n]=DG[c]+1;BQ[t++]=n}}}}
-function steer(b,ang){const cx=b.x|0,cy=b.y|0;let best=DG[cy*20+cx],bx=-1,by=0;if(best<0)return ang; // step to the neighbour tile closest to the player
+const DG=new Int16Array(NN),BQ=new Int16Array(NN);let dgT=0;
+function flood(){DG.fill(-1);let h=0,t=0;const s0=(INTEL.y|0)*MW+(INTEL.x|0);DG[s0]=0;BQ[t++]=s0; // BFS distance to your LAST KNOWN position (enemies aren't psychic)
+ while(h<t){const c=BQ[h++],cx=c%MW,cy=c/MW|0;for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3);if(nx<0||ny<0||nx>MW-1||ny>MW-1)continue;const n=ny*MW+nx;if(DG[n]<0&&!cell(nx,ny)){DG[n]=DG[c]+1;BQ[t++]=n}}}}
+function steer(b,ang){const cx=b.x|0,cy=b.y|0;let best=DG[cy*MW+cx],bx=-1,by=0;if(best<0)return ang; // step to the neighbour tile closest to the player
  for(let k=0;k<8;k++){const dx=k<4?(k==0)-(k==1):(k==4||k==5?1:-1),dy=k<4?(k==2)-(k==3):(k==4||k==6?1:-1),nx=cx+dx,ny=cy+dy;
-  if(nx<0||ny<0||nx>19||ny>19||cell(nx,ny)||(k>3&&(cell(cx+dx,cy)||cell(cx,cy+dy))))continue;const v=DG[ny*20+nx];if(v>=0&&v<best){best=v;bx=nx;by=ny}}
+  if(nx<0||ny<0||nx>MW-1||ny>MW-1||cell(nx,ny)||(k>3&&(cell(cx+dx,cy)||cell(cx,cy+dy))))continue;const v=DG[ny*MW+nx];if(v>=0&&v<best){best=v;bx=nx;by=ny}}
  return bx<0?ang:Math.atan2(by+.5-b.y,bx+.5-b.x)}
 // ============================== 13b. FIRING RANGE ==============================
 // A practice mode for tuning how aiming feels on YOUR device. 12 targets, one at a time: each steps out somewhere in front of
 // or beside you (sometimes off-screen, so you have to turn) and strafes. Nobody shoots back. It measures the three numbers
 // that decide how aiming feels (time to first hit, accuracy, overshoot) and suggests a setting to change.
 let RG=null;
-function rangeSpawn(){for(let k=0;k<80;k++){const x=1.5+Math.random()*17,y=1.5+Math.random()*16;if(cell(x,y))continue;
+function rangeSpawn(){for(let k=0;k<300;k++){const x=1.5+Math.random()*(MW-3),y=1.5+Math.random()*(MW-3);if(cell(x,y))continue;
   const dx=x-P.x,dy=y-P.y,d=Math.hypot(dx,dy),rel=wrapA(Math.atan2(dy,dx)-P.a);if(d<4||d>11||Math.abs(rel)>1.6)continue;
   cast(P.x,P.y,dx/d,dy/d);if(RD<d)continue;                                     // must be in the open
   const ty=[0,2,3][Math.random()*3|0],r=makeSoldier(ty),yaw=Math.atan2(-dx,-dy);scene.add(r.G);
@@ -783,33 +950,33 @@ function rangeFinish(){over=true;const L=RG.log,k=L.filter(r=>r.kill!==null),f=L
 //   fight:  can see you: strafe / hold / back off depending on kit, shoot when it's his turn
 //   cover:  shot at or nearly hit: run to the nearest spot you can't see, wait, then peek out again
 //   flank:  (Standard) circle round to your side while a squadmate keeps you busy
-const INTEL={x:10,y:10,t:-99};let lastCall=-9;
+const INTEL={x:MC,y:MC,t:-99};let lastCall=-9;
 const know=()=>time-INTEL.t<10;                                     // intel goes stale after 10 s without contact
 function reveal(x,y){INTEL.x=x;INTEL.y=y;INTEL.t=time}
-const cellOf=b=>(b.y|0)*20+(b.x|0);
+const cellOf=b=>(b.y|0)*MW+(b.x|0);
 function setState(b,s){if(b.state!==s){b.state=s;b.stT=0}}
 // Distance field from a goal cell (the same BFS as above); an enemy walks "downhill" along it around walls
 function field(f,goal){f.fill(-1);let h=0,t=0;f[goal]=0;BQ[t++]=goal;
- while(h<t){const c=BQ[h++],cx=c%20,cy=c/20|0;for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3);if(nx<0||ny<0||nx>19||ny>19)continue;const n=ny*20+nx;if(f[n]<0&&!cell(nx,ny)){f[n]=f[c]+1;BQ[t++]=n}}}}
-function follow(b,f,ang){const cx=b.x|0,cy=b.y|0;let best=f[cy*20+cx],bx=-1,by=0;if(best<0)return ang;
+ while(h<t){const c=BQ[h++],cx=c%MW,cy=c/MW|0;for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3);if(nx<0||ny<0||nx>MW-1||ny>MW-1)continue;const n=ny*MW+nx;if(f[n]<0&&!cell(nx,ny)){f[n]=f[c]+1;BQ[t++]=n}}}}
+function follow(b,f,ang){const cx=b.x|0,cy=b.y|0;let best=f[cy*MW+cx],bx=-1,by=0;if(best<0)return ang;
  for(let k=0;k<8;k++){const dx=k<4?(k==0)-(k==1):(k==4||k==5?1:-1),dy=k<4?(k==2)-(k==3):(k==4||k==6?1:-1),nx=cx+dx,ny=cy+dy;
-  if(nx<0||ny<0||nx>19||ny>19||cell(nx,ny)||(k>3&&(cell(cx+dx,cy)||cell(cx,cy+dy))))continue;const v=f[ny*20+nx];if(v>=0&&v<best){best=v;bx=nx;by=ny}}
- if(bx<0)return f===b.f&&b.goal>=0?Math.atan2((b.goal/20|0)+.5-b.y,b.goal%20+.5-b.x):ang;   // already in the goal cell: head for its centre
+  if(nx<0||ny<0||nx>MW-1||ny>MW-1||cell(nx,ny)||(k>3&&(cell(cx+dx,cy)||cell(cx,cy+dy))))continue;const v=f[ny*MW+nx];if(v>=0&&v<best){best=v;bx=nx;by=ny}}
+ if(bx<0)return f===b.f&&b.goal>=0?Math.atan2((b.goal/MW|0)+.5-b.y,b.goal%MW+.5-b.x):ang;   // already in the goal cell: head for its centre
  return Math.atan2(by+.5-b.y,bx+.5-b.x)}
 function setGoal(b,c){b.goal=c;field(b.f,c)}
-function wander(){const r=stormR()*.8;for(let k=0;k<40;k++){const x=ST.x+(Math.random()*2-1)*r,y=ST.y+(Math.random()*2-1)*r;if(inMap(x|0,y|0)&&!cell(x,y)&&Math.hypot(x-ST.x,y-ST.y)<r)return(y|0)*20+(x|0)}return cellOf({x:ST.x1,y:ST.y1})}
+function wander(){const r=stormR()*.8;for(let k=0;k<40;k++){const x=ST.x+(Math.random()*2-1)*r,y=ST.y+(Math.random()*2-1)*r;if(inMap(x|0,y|0)&&!cell(x,y)&&Math.hypot(x-ST.x,y-ST.y)<r)return(y|0)*MW+(x|0)}return cellOf({x:ST.x1,y:ST.y1})}
 // COVER: the nearest cell (within 5 steps) that you can't see from your last known position, preferring spots against a wall
-const CQ=new Int16Array(400),CD=new Int8Array(400);
+const CQ=new Int16Array(NN),CD=new Int8Array(NN);
 function findCover(b){CD.fill(-1);let h=0,t=0;const s0=cellOf(b);CD[s0]=0;CQ[t++]=s0;
- while(h<t){const c=CQ[h++],cx=c%20,cy=c/20|0;
+ while(h<t){const c=CQ[h++],cx=c%MW,cy=c/MW|0;
   if(c!==s0){const px=cx+.5,py=cy+.5,dx=INTEL.x-px,dy=INTEL.y-py,dd=Math.hypot(dx,dy)||1;cast(px,py,dx/dd,dy/dd);
    if(RD<dd&&(isWall(cx+1,cy)||isWall(cx-1,cy)||isWall(cx,cy+1)||isWall(cx,cy-1)))return c}
   if(CD[c]>=5)continue;
-  for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3),n=ny*20+nx;if(inMap(nx,ny)&&CD[n]<0&&!cell(nx,ny)){CD[n]=CD[c]+1;CQ[t++]=n}}}
+  for(let k=0;k<4;k++){const nx=cx+(k==0)-(k==1),ny=cy+(k==2)-(k==3),n=ny*MW+nx;if(inMap(nx,ny)&&CD[n]<0&&!cell(nx,ny)){CD[n]=CD[c]+1;CQ[t++]=n}}}
  return -1}
 // FLANK: a cell 3-6 steps from your last known position, on the opposite side from the squadmate already fighting you
 function findFlank(b,eng){const a2=Math.atan2(eng.y-INTEL.y,eng.x-INTEL.x);let best=-1,bd=1e9;
- for(let i=0;i<400;i++){if(DG[i]<3||DG[i]>6)continue;const x=i%20+.5,y=(i/20|0)+.5;
+ for(let i=0;i<NN;i++){if(DG[i]<3||DG[i]>6)continue;const x=i%MW+.5,y=(i/MW|0)+.5;
   if(Math.abs(wrapA(Math.atan2(y-INTEL.y,x-INTEL.x)-a2))<1.6)continue;const dd=Math.hypot(x-b.x,y-b.y);if(dd<bd){bd=dd;best=i}}
  return best}
 // "SPOTTED" warning on the HUD (with a radio callout sound) when an enemy first sees you
@@ -825,7 +992,11 @@ const rankOf=x=>{let r=0;while(r+1<RANKS.length&&x>=RANKS[r+1])r++;return r};
 const rankPct=x=>{const r=rankOf(x);return r>=RANKS.length-1?100:(x-RANKS[r])/(RANKS[r+1]-RANKS[r])*100};
 const UNL={1:'KR-12 BREACHER as a starting gun',3:'LR-7 MARKSMAN as a starting gun',4:'AMBER gun finish',6:'CORAL gun finish',9:'GOLD gun finish'};
 const GUN_RANK=[0,1,3],SKIN_RANK=[0,4,6,9];
-let PRO={xp:0,m:0,w:0,k:0,h:0,bk:0,bp:99,ft:0,day:'',dd:0,tut:0,skin:0,lo:0};
+let PRO={xp:0,m:0,w:0,k:0,h:0,bk:0,bp:99,ft:0,day:'',dd:0,tut:0,skin:0,lo:0,pk:0};
+// PERKS: the second half of your loadout. One pick, one clear effect, chosen with the PERK button on the menu. All available from the start.
+const PERK=[{n:'PLATED',d:'Start with all 3 armour plates (normally 2).'},{n:'LIGHTFOOT',d:'Move 10% faster. Enemies only hear you sprint up close.'},
+ {n:'SCAVENGER',d:'50% more ammo, and eliminations drop loot more often.'},{n:'STEADY HANDS',d:'40% less recoil and spread.'}];
+const PK=i=>(PRO.pk|0)===i;
 try{Object.assign(PRO,JSON.parse(localStorage.vzp||'{}'))}catch(e){}
 const savePro=()=>{try{localStorage.vzp=JSON.stringify(PRO)}catch(e){}};
 const DAILY=[
@@ -867,7 +1038,7 @@ function updateTags(dt){for(const c of COS){if(c.t<=0)continue;c.t-=dt;const b=c
  if(c.t<=0||!b||b.hp<=0||!b.G.visible){c.t=0;c.el.style.display='none';continue}
  _tv.set(b.G.position.x,.9*b.sc,b.G.position.z).project(cam);if(_tv.z>1){c.el.style.display='none';continue}c.el.style.display='block';
  c.el.style.transform=`translate(${((_tv.x+1)/2*innerWidth-20)|0}px,${((1-_tv.y)/2*innerHeight-14)|0}px)`;c.el.style.opacity=Math.min(1,c.t*3)}}
-function flankWarn(f,goal){const gx=goal%20+.5,gy=(goal/20|0)+.5,rel=wrapA(Math.atan2(gy-P.y,gx-P.x)-P.a),side=Math.abs(rel)>2.2?'BEHIND YOU':rel<0?'LEFT ◀':'RIGHT ▶';
+function flankWarn(f,goal){const gx=goal%MW+.5,gy=(goal/MW|0)+.5,rel=wrapA(Math.atan2(gy-P.y,gx-P.x)-P.a),side=Math.abs(rel)>2.2?'BEHIND YOU':rel<0?'LEFT ◀':'RIGHT ▶';
  const el=$('flk');el.textContent='⚠ FLANKER — '+side;el.style.opacity=1;clearTimeout(flankWarn.t);flankWarn.t=setTimeout(()=>el.style.opacity=0,2200);snd('call',.7,Math.sin(rel))}
 
 // ============================== 13c2. TUTORIAL (first match only; replay it from Settings) ==============================
@@ -891,24 +1062,24 @@ let P,bots=[],time=0,over=true,fps=60,fc=0,ft=0;
 const SL=()=>P.sl[P.cur],WP=()=>WPN[SL().w];
 function reset(gen){
  bots.forEach(b=>{scene.remove(b.G);if(b.laser)scene.remove(b.laser)});dying.forEach(d=>scene.remove(d.G));dying.length=0;dgT=0;items.forEach(i=>scene.remove(i.G));bots=[];items=[];
- if(gen){if(RANGE())loadMap(CLASSIC);else genMap(Math.random);seed=(Math.random()*2147483646|0)+1;buildArena();drawWC();   // a NEW arena every match (the range keeps the classic one)
+ if(gen){seed=RANGE()?4242:(Math.random()*2147483646|0)+1;genCity(RANGE()?seeded(4242):Math.random);buildArena();drawWC();   // a NEW city every match (the range always gets the same one)
   holeI=0;holeM.count=0}
  const pad=gen&&!RANGE()?PADS[Math.random()*4|0]:PADS[0],lo=RANGE()?0:Math.min(PRO.lo|0,2);
- P={x:pad.x,y:pad.y,a:pad.a,pit:0,vx:0,vy:0,spd:0,hp:100,ar:150,sl:[{w:lo,ammo:WPN[lo].mag,res:WPN[lo].res},null],cur:0,sw:0,near:null,rel:0,cd:0,kick:0,bob:0,kills:0,hm:0,bl:0,rc:0,az:0,tg:null,spK:0,relK:0,
+ P={x:pad.x,y:pad.y,a:pad.a,pit:0,vx:0,vy:0,spd:0,hp:100,ar:PK(0)?150:100,sl:[{w:lo,ammo:WPN[lo].mag,res:Math.round(WPN[lo].res*(PK(2)?1.5:1))},null],cur:0,sw:0,near:null,rel:0,cd:0,kick:0,bob:0,kills:0,hm:0,bl:0,rc:0,az:0,tg:null,spK:0,relK:0,
   tr:0,shots:0,hits:0,heads:0,streak:0,smax:0,lastKill:-9,hb:0,stormMsg:0,edgeT:0,tgPrev:null,tgBear:0,kw:[0,0,0],long:0,meds:0,outT:0,knew:false};   // tr = screen-shake 'trauma'; the rest are end-of-match stats
  GUNS.forEach((m,w)=>m.visible=w===lo);
- const open=()=>{let x,y;do{x=1.5+Math.random()*17;y=1.5+Math.random()*17}while(cell(x,y));return[x,y]};
+ const open=()=>{let x,y;do{x=1.5+Math.random()*(MW-3);y=1.5+Math.random()*(MW-3)}while(cell(x,y));return[x,y]};
  INTEL.t=-99;lastCall=-9;                                       // new match: nobody knows where you are
- ST.t=0;ST.x0=ST.y0=10;if(gen&&!RANGE())pickStormEnd();else ST.x1=ST.y1=10;stormStep();
+ ST.t=0;ST.x0=ST.y0=MC;if(gen&&!RANGE())pickStormEnd();else ST.x1=ST.y1=MC;stormStep();
  RG=RANGE()?{n:0,total:12,cur:null,wait:1.2,log:[]}:null;     // firing range: targets come one at a time (see section 13b)
  const hidden=p=>{const dx=p[0]-P.x,dy=p[1]-P.y,d=Math.hypot(dx,dy);cast(P.x,P.y,dx/d,dy/d);return RD<d};   // FAIR START: nobody spawns where you can see them
- for(let i=0;i<LV[lvl].n;i++){let p,k=0;do{p=open()}while((Math.hypot(p[0]-P.x,p[1]-P.y)<6||!hidden(p))&&++k<200);
+ for(let i=0;i<LV[lvl].n;i++){let p,k=0;do{p=open()}while((Math.hypot(p[0]-P.x,p[1]-P.y)<9||!hidden(p))&&++k<200);
   const ty=[0,0,1,0,2,3][i%6],r=makeSoldier(ty),yaw=Math.random()*6.283;scene.add(r.G);
   bots.push(Object.assign(r,{x:p[0],y:p[1],hp:LV[lvl].hp*[1,.55,2.2,.8][ty],ty,sc:KIT[ty].scale,sp:[1,1.7,.6,.8][ty],stg:0,tk:false,tkT:0,cd:1+Math.random()*2,ph:Math.random()*6,
    hit:0,t:0,mode:0,sd:1,vx:0,vy:0,mv:0,seen:0,los:false,fl:false,tg:false,yaw,face:yaw,mvA:yaw,phase:Math.random()*6,turnRate:0,lean:0,kick:{x:0,v:0},mfT:0,dt:0,
-   state:'patrol',stT:0,goal:-1,f:new Int16Array(400),supp:0,peek:false,wait:0,peekDur:0,pd:0,ph2:false}))}   // brain: everyone starts on patrol
- if(!RANGE()){for(let i=0;i<7;i++){const p=open();spawnItem(p[0],p[1],i%3)}
-  for(let w=0;w<3;w++)if(w!==lo){let p,k=0;do{p=open()}while(Math.hypot(p[0]-P.x,p[1]-P.y)<4&&++k<50);spawnItem(p[0],p[1],3+w)}}   // one crate of each gun you didn't bring
+   state:'patrol',stT:0,goal:-1,f:new Int16Array(NN),supp:0,peek:false,wait:0,peekDur:0,pd:0,ph2:false}))}   // brain: everyone starts on patrol
+ if(!RANGE()){for(let i=0;i<15;i++){const p=open();spawnItem(p[0],p[1],i%3)}
+  for(let w=0;w<3;w++)if(w!==lo)for(let c=0;c<2;c++){let p,k=0;do{p=open()}while(Math.hypot(p[0]-P.x,p[1]-P.y)<4&&++k<50);spawnItem(p[0],p[1],3+w)}}   // one crate of each gun you didn't bring
  for(const c of COS){c.t=0;c.el.style.display='none'}
  time=0;over=false;$('feed').innerHTML='';
 }
@@ -938,7 +1109,7 @@ function kill(b,head,byPlayer){b.tk=false;b.G.visible=true;if(b.laser)b.laser.vi
   P.streak=time-P.lastKill<4?P.streak+1:1;P.lastKill=time;P.smax=Math.max(P.smax,P.streak);   // kill streaks (within 4 s of each other)
   if(P.streak>1){banner(['','','DOUBLE KILL','TRIPLE KILL'][P.streak]||'RAMPAGE');snd('streak')}}
  {const need=[];if(P.hp<65)need.push(1);if(SL().res<WP().pick*1.5)need.push(0);if(P.ar<100)need.push(2);   // drops favour what you need
-  if(Math.random()<(need.length?.85:.4))spawnItem(b.x,b.y,need.length?need[Math.random()*need.length|0]:Math.random()*3|0)}
+  if(Math.random()<(need.length?.85:.4)*(PK(2)?1.25:1))spawnItem(b.x,b.y,need.length?need[Math.random()*need.length|0]:Math.random()*3|0)}
  if(!bots.some(o=>o.hp>0)&&!over)finish(true)}
 
 // ============================== 14. SHOOTING ==============================
@@ -948,9 +1119,9 @@ let RD,RS=0,RX=0,RY=0,RSX=1,RSY=1;                               // last wall hi
 function cast(x,y,dx,dy){ // 2D wall raycast (DDA) on the tile grid: distance to the first wall
  let mx=Math.floor(x),my=Math.floor(y);const ddx=Math.abs(1/dx),ddy=Math.abs(1/dy),sx=dx<0?-1:1,sy=dy<0?-1:1;
  let sdx=(dx<0?x-mx:mx+1-x)*ddx,sdy=(dy<0?y-my:my+1-y)*ddy,side=0;
- for(let i=0;i<40;i++){if(sdx<sdy){sdx+=ddx;mx+=sx;side=0}else{sdy+=ddy;my+=sy;side=1}
+ for(let i=0;i<90;i++){if(sdx<sdy){sdx+=ddx;mx+=sx;side=0}else{sdy+=ddy;my+=sy;side=1}
   if(cell(mx,my)){RD=side?sdy-ddy:sdx-ddx;RS=side;RX=mx;RY=my;RSX=sx;RSY=sy;return}}
- RD=40}
+ RD=90}
 function reload(){const s=SL(),w=WPN[s.w];if(P.rel>0||P.sw>0||s.ammo>=w.mag||s.res<=0)return;P.rel=w.rel;snd('reload')}
 function swapTo(i){if(!P.sl[i]||over)return;P.cur=i;P.sw=.35;P.rel=0;P.cd=0;GUNS.forEach((m,w)=>m.visible=w===P.sl[i].w);snd('swap')}
 function swap(){if(over||paused)return;if(P.near)return take(P.near);if(P.sl[1])swapTo(1-P.cur)}
@@ -965,14 +1136,15 @@ function fire(){
  const s=SL(),w=WPN[s.w];
  if(s.ammo<=0){reload();return}
  s.ammo--;P.shots++;if(!RANGE()&&!TUT&&bots.some(b=>b.hp>0&&Math.hypot(b.x-P.x,b.y-P.y)<10))reveal(P.x,P.y);  // gunfire gives your position away to anyone within earshot
- P.tr=Math.min(1,P.tr+w.tr);P.cd=w.cd;P.kick=w.kick;fbuf=0;P.bl=Math.min(1,P.bl+w.bl);P.pit+=w.rec;P.rc+=w.rec;snd(w.snd);vib(w.vib);cam.updateMatrixWorld(true);
+ const sh=PK(3)?.6:1;                                              // STEADY HANDS perk: 40% less recoil and spread
+ P.tr=Math.min(1,P.tr+w.tr);P.cd=w.cd;P.kick=w.kick*(PK(3)?.8:1);fbuf=0;P.bl=Math.min(1,P.bl+w.bl*sh);P.pit+=w.rec*sh;P.rc+=w.rec*sh;snd(w.snd);vib(w.vib);cam.updateMatrixWorld(true);
  flash.rotation.z=Math.random()*3;flash.scale.setScalar((.8+Math.random()*.6)*(s.w==1?1.6:1));flash.position.z=w.mz;casing(s.w);
  const o=cam.position;let anyHit=false,anyHead=false;
  for(let pi=0;pi<w.pel;pi++){
-  let da,dp;if(w.pel>1){const r=w.sp*Math.sqrt(Math.random())*(1-.25*P.az),th=Math.random()*6.283;da=Math.cos(th)*r;dp=Math.sin(th)*r}     // pellets: even cone
-  else{const k=(w.sp+w.bloom*P.bl)*(1-.6*P.az);da=(Math.random()-.5)*k;dp=(Math.random()-.5)*k*.4}
+  let da,dp;if(w.pel>1){const r=w.sp*(PK(3)?.8:1)*Math.sqrt(Math.random())*(1-.25*P.az),th=Math.random()*6.283;da=Math.cos(th)*r;dp=Math.sin(th)*r}     // pellets: even cone
+  else{const k=(w.sp+w.bloom*P.bl)*sh*(1-.6*P.az);da=(Math.random()-.5)*k;dp=(Math.random()-.5)*k*.4}
   const a=P.a+da,pit=P.pit+dp,cp=Math.cos(pit),hx=Math.cos(a),hy=Math.sin(a),d=_d.set(hx*cp,Math.sin(pit),hy*cp);
-  cast(P.x,P.y,hx,hy);const wallT=Math.min(RD/cp,40),floorT=d.y<0?o.y/-d.y:99,rs=RS,rx=RX,ry=RY,rsx=RSX,rsy=RSY;let bt=Math.min(wallT,floorT),best=null,head=false;
+  cast(P.x,P.y,hx,hy);const wallT=Math.min(RD/cp,90),floorT=d.y<0?o.y/-d.y:99,rs=RS,rx=RX,ry=RY,rsx=RSX,rsy=RSY;let bt=Math.min(wallT,floorT),best=null,head=false;
   for(let pass=0;pass<(w.mag2?2:1)&&!best;pass++){const mg=pass?(STD()?1.7:2.4):1; // pass 2 = bullet magnetism: near-misses on the BODY still count (head stays skill-only)
    for(const b of bots){if(b.hp<=0)continue;
     for(const[hd,cy,r]of HS){if(pass&&hd)continue;
@@ -1103,13 +1275,13 @@ function update(dt){
  // Movement: velocity glides toward the stick's target velocity (fast start, hard braking on reverse, gentle glide on release)
  let fw=-joy.dy-pad.y+(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0),st=joy.dx+pad.x+(keys.KeyD?1:0)-(keys.KeyA?1:0),l=Math.hypot(fw,st);
  if(l<.1){fw=st=l=0}else{const sc=Math.min(1,(l-.1)/.9)/l;fw*=sc;st*=sc;l=Math.min(1,l*sc)}
- const sprint=held.s||pad.s,top=sprint?3.4:2.2,c=Math.cos(P.a),sn=Math.sin(P.a),tx=(c*fw-sn*st)*top,ty=(sn*fw+c*st)*top;
+ const sprint=held.s||pad.s,top=(sprint?3.4:2.2)*(PK(1)?1.1:1),c=Math.cos(P.a),sn=Math.sin(P.a),tx=(c*fw-sn*st)*top,ty=(sn*fw+c*st)*top;
  const k=l>0?((P.vx*tx+P.vy*ty)<0?34:18):9,e=ez(k,dt);
  P.vx+=(tx-P.vx)*e;P.vy+=(ty-P.vy)*e;
  if(l===0&&Math.abs(P.vx)+Math.abs(P.vy)<.02)P.vx=P.vy=0;
  const pb=P.bob;walk(P,P.vx*dt,P.vy*dt);P.spd=Math.hypot(P.vx,P.vy);if(P.spd>.1)P.bob+=dt*P.spd*4.1;
  if(P.spd>.6&&Math.floor(pb/Math.PI)!==Math.floor(P.bob/Math.PI)){snd('step',held.s?.35:.22);   // your own footsteps
-  if(P.spd>2.6&&!RANGE()&&!TUT&&bots.some(b=>b.hp>0&&Math.hypot(b.x-P.x,b.y-P.y)<4.5)){const was=know();reveal(P.x,P.y);   // sprinting is loud: close enemies hear you (walking is quiet)
+  if(P.spd>2.6&&!RANGE()&&!TUT&&bots.some(b=>b.hp>0&&Math.hypot(b.x-P.x,b.y-P.y)<(PK(1)?2.5:4.5))){const was=know();reveal(P.x,P.y);   // sprinting is loud: close enemies hear you (walking is quiet)
    if(!was&&time-(P.heardT||-9)>6){P.heardT=time;feed('An enemy heard you sprinting')}}}
  fbuf-=dt; if(held.f||held.f2||pad.f||keys.Space||fbuf>0||aim)fire();
  if(P.rel>0){P.rel-=dt;if(P.rel<=0){const s=SL(),n=Math.min(WP().mag-s.ammo,s.res);s.ammo+=n;s.res-=n}}
@@ -1129,7 +1301,7 @@ function update(dt){
    else if(!P.sl[1])take(it);else P.near=it;
    continue}
   if(dd<2.5&&dd>.01){it.x+=dx/dd*3*dt;it.y+=dy/dd*3*dt;it.G.position.x=it.x;it.G.position.z=it.y}
-  if(dd<.45){if(it.t==1){P.hp=Math.min(100,P.hp+30);P.meds++}else if(it.t==2)P.ar=Math.min(150,P.ar+50);else for(const s of P.sl)if(s)s.res+=WPN[s.w].pick;
+  if(dd<.45){if(it.t==1){P.hp=Math.min(100,P.hp+30);P.meds++}else if(it.t==2)P.ar=Math.min(150,P.ar+50);else for(const s of P.sl)if(s)s.res+=Math.round(WPN[s.w].pick*(PK(2)?1.5:1));
    feed(['+Ammo','+30 Health','+1 Armour plate'][it.t]);snd('pick');scene.remove(it.G);items.splice(i,1)}}
  if(RANGE()&&!over)rangeUpdate(dt);
  // FLANKING (Standard): every 2 s, if someone is fighting you and nobody is flanking yet, send one hunter round your side
@@ -1143,7 +1315,7 @@ function update(dt){
    // OCCLUSION CULLING: an enemy hidden behind walls isn't drawn at all. Most enemies are hidden most of the time, so this is the
    // biggest saving on a weak phone. Two extra rays to his left and right edges stop half-visible enemies from popping in late.
    let v=b.los||d<2;if(!v)for(const sg of[-1,1]){const tx=b.x-dy/d*.3*sg-P.x,ty=b.y+dx/d*.3*sg-P.y,td=Math.hypot(tx,ty);cast(P.x,P.y,tx/td,ty/td);if(RD>td){v=true;break}}
-   b.G.visible=v}
+   b.G.visible=v&&d<VD}
   if(TUT){b.vx=b.vy=b.mv=0;animate(b,dt);continue}                              // tutorial: everyone holds still
   const los=b.los,L=LV[lvl],sees=los&&d<14;
   if(!los)b.seen=0;else if(!b.seen){b.seen=1;                                    // he has just spotted you
@@ -1208,6 +1380,7 @@ function update(dt){
   if(!g.landed&&g.dt>.62){g.landed=true;if(g.G.visible)dust(_m.set(g.G.position.x,.05,g.G.position.z),5,3)}}   // a puff of dust where the body lands
  // HUD (checked ~15x/sec, and an element is only touched when its value changed: DOM writes are slow on phones)
  if(fn%4==0){
+ if(fn%16==0&&!RANGE())zoneCheck();
  sT(H.alive,bots.filter(b=>b.hp>0).length+1);sT(H.kills,P.kills);
  const left=Math.max(0,DUR()-ST.t);sT(H.stt,RANGE()?(RG.n+'/'+RG.total):Math.floor(left/60)+':'+String(Math.floor(left%60)).padStart(2,'0'));  // range: target count instead of storm timer
  sT(H.hpv,Math.max(0,Math.ceil(P.hp)));sW(H.hpf,Math.round(Math.max(0,P.hp))+'%');
@@ -1223,12 +1396,20 @@ function update(dt){
 }
 const H={};['alive','kills','stt','hpv','hpf','am','rs','comp','xh','low','ammo','wn','sl1','sl2','out','bw','clk'].forEach(k=>H[k]=$(k));
 const sT=(el,v)=>{v=''+v;if(el._v!==v){el._v=v;el.textContent=v}},sW=(el,v)=>{if(el._w!==v){el._w=v;el.style.width=v}},sO=(el,v)=>{if(el._o!==v){el._o=v;el.style.opacity=v}},sC=(el,c,on)=>{if(el['_'+c]!==on){el['_'+c]=on;el.classList.toggle(c,on)}};
+// DISTRICT NAME: fades in under the compass when you walk into a new part of the city
+let zoneCur=-1,zoneT=0;
+function zoneCheck(){const d=district(P.x,P.y);if(d===zoneCur)return;zoneCur=d;const z=$('zone');z.textContent=DNAME[d];z.style.opacity=1;clearTimeout(zoneT);zoneT=setTimeout(()=>z.style.opacity=0,2200)}
 function banner(t){const b=$('banner');b.textContent=t;b.style.opacity=1;clearTimeout(banner.t);banner.t=setTimeout(()=>b.style.opacity=0,1300)}
 
 // ============================== 17. DRAW ==============================
 // Logic runs in fixed 1/60 s steps; the frame you see is blended between the last two steps (al = 0..1).
 function snap(){P.px=P.x;P.py=P.y;P.pa=P.a;P.pp=P.pit;for(const b of bots){b.px=b.x;b.py=b.y}}
 const lp=(a,b,t)=>a+(b-a)*t;let dn=0;
+// VIEW DISTANCE CULL (see QS): a chunk whose nearest edge is past the haze is skipped, with its shadow. Checked ~10x a second.
+let VD=999;const _cc=new V3();
+function viewCull(){for(const W of[STATIC,arena])for(const me of W.meshes){if(me.material!==WORLDM)continue;const bs=me.geometry.boundingSphere;
+  const v=VD>900||(me.userData.k!=='far'&&(bs.radius>90||_cc.copy(bs.center).distanceTo(cam.position)-bs.radius<VD));me.visible=v}
+ for(const it of items)it.G.visible=VD>900||Math.hypot(it.x-P.x,it.y-P.y)<VD*.7}   // loot beams: a bit shorter still
 function draw(dt,al){
  const bob=Math.abs(Math.sin(P.bob));dn++;
  // screen shake: 'trauma' squared feels natural (small bumps barely shake, big hits really do); smooth wobble, not random noise
@@ -1246,10 +1427,10 @@ function draw(dt,al){
  const sr=stormR();ring.scale.set(sr,1,sr);ring.position.x=ST.x;ring.position.z=ST.y;STORMTX.offset.x+=dt*.05;
  for(const t of tracers)if(t.l>0){t.l-=dt;if(t.l<=0)t.m.visible=false}
  updateSparks(dt);updateDust(dt);updateCasings(dt);updateTags(dt);CLOUDS.rotation.y+=dt*.004;
- R.render(scene,cam);if(dn%3==0)minimap(); // radar ~10x/sec
+ if(dn%3==0)viewCull();R.render(scene,cam);if(dn%3==0)minimap(); // radar ~10x/sec
 }
-const WC=document.createElement('canvas');WC.width=WC.height=100;
-function drawWC(){const w=WC.getContext('2d');w.clearRect(0,0,100,100);for(let y=0;y<20;y++)for(let x=0;x<20;x++)if(cell(x,y)){w.fillStyle='#'+cellColor(x,y).toString(16).padStart(6,'0');w.fillRect(x*5,y*5,5,5)}}drawWC(); // walls drawn once per arena
+const WC=document.createElement('canvas');WC.width=WC.height=MW*5;
+function drawWC(){const w=WC.getContext('2d');w.clearRect(0,0,MW*5,MW*5);for(let y=0;y<MW;y++)for(let x=0;x<MW;x++)if(cell(x,y)){w.fillStyle='#'+cellColor(x,y).toString(16).padStart(6,'0');w.fillRect(x*5,y*5,5,5)}}drawWC(); // walls drawn once per arena
 function minimap(){ // rotating circular radar
  const S=5;m.clearRect(0,0,96,96);m.save();m.beginPath();m.arc(48,48,47,0,7);m.clip();m.fillStyle='rgba(10,15,24,.85)';m.fillRect(0,0,96,96);
  m.translate(48,48);m.rotate(-P.a-Math.PI/2);m.translate(-P.x*S,-P.y*S);
@@ -1261,7 +1442,9 @@ function minimap(){ // rotating circular radar
 }
 
 // ============================== 18. MAIN LOOP, QUALITY, PAUSE, OPTIONS ==============================
-const QS=[{n:'LOW',lo:.45,hi:.8,st:.6,fps:30},{n:'MED',lo:.6,hi:1,st:.8,fps:30},{n:'HIGH',lo:.8,hi:1.25,st:1,fps:60}]; // render scale range, start, FPS cap
+// render scale range, start, FPS cap, and VIEW DISTANCE: the dust haze thickens on weaker settings, and whole chunks of the city
+// past the haze aren't drawn at all (the big saving on a phone). The laptop setting keeps the long view to the skyline.
+const QS=[{n:'LOW',lo:.45,hi:.8,st:.6,fps:30,fn:7,ff:30,vd:33},{n:'MED',lo:.6,hi:1,st:.8,fps:30,fn:10,ff:48,vd:52},{n:'HIGH',lo:.8,hi:1.25,st:1,fps:60,fn:16,ff:125,vd:999}];
 const STEP=1/60;let last=performance.now(),acc=0,ceil=9,good=0,paused=0;
 function loop(n){requestAnimationFrame(loop);
  const q=QS[ql];if(n-last<1000/q.fps-3)return;        // frame cap (3 ms slack for timing jitter)
@@ -1273,8 +1456,8 @@ function loop(n){requestAnimationFrame(loop);
  fc++;ft+=dt;if(ft>2){fps=fc/ft;fc=ft=0;autoRes(q);if(showF||RANGE())sT(fpsEl,Math.round(fps)+' FPS · '+Math.round(1000/fps)+' ms · '+pr.toFixed(2)+'x')}}  // the range always shows FPS
 // Menu background: the camera circles the arena while enemies idle. Drawn at ~15 FPS: plenty behind a menu, saves battery.
 let mT=0,mF=0;
-function menuView(dt){mT+=dt;if(mF^=1)return;
- const a=mT*.08;cam.position.set(10+Math.cos(a)*10.5,2.6,10+Math.sin(a)*10.5);cam.lookAt(10,.3,10);VM.visible=false;
+function menuView(dt){mT+=dt;if(mF^=1)return;for(const W of[STATIC,arena])for(const me of W.meshes)me.visible=true;
+ const a=mT*.05;cam.position.set(MC+Math.cos(a)*14,4.4,MC+Math.sin(a)*14);cam.lookAt(MC,1,MC);VM.visible=false;
  if(cam.fov!==72){cam.fov=72;cam.updateProjectionMatrix()}
  for(const b of bots)if(b.hp>0){b.mv=0;animate(b,dt*2);b.G.visible=true;b.G.position.x=b.x;b.G.position.z=b.y}
  CLOUDS.rotation.y+=dt*.008;
@@ -1292,7 +1475,7 @@ function start(){if(starting)return;ac();
  const f=$('fade');f.style.transition='none';f.style.opacity=1;starting=true;
  // Building a new arena takes a moment on a weak phone, so it happens BEHIND the black fade (next frame), not on top of a frozen menu.
  requestAnimationFrame(()=>setTimeout(()=>{starting=false;
-  reset(true);snap();
+  reset(true);snap();zoneCur=-1;
   R.compile(scene,cam);   // build every shader now, so the first fight doesn't stutter
   acc=0;fc=ft=0;last=performance.now();paused=0;
   TUT=!PRO.tut&&!RANGE()?{i:0,tt:0,mv:0,lk:0,la:P.a,lp:P.pit,sh:0,s0:0,ad:0}:null;$('tut').style.display=TUT?'flex':'none';tutStep();
@@ -1318,11 +1501,13 @@ const opts=$('opts'),mkb=id=>{const b=document.createElement('button');b.classNa
 const bFa=mkb('fa'),bGy=mkb('gy'),bQl=mkb('ql'),bLs=mkb('ls'),bIv=mkb('iv'),bSk=mkb('sk'),bFp=mkb('fp'),bSn=mkb('sn'),bTu=mkb('tu'),GYL=['OFF','ON','YAW FLIP','PITCH FLIP','BOTH FLIP'];
 const fpsEl=document.createElement('div');fpsEl.className='pill';fpsEl.style.cssText='position:absolute;left:12px;top:114px;font-size:11px;display:none';$('hud').appendChild(fpsEl);
 const gunOK=w=>rankOf(PRO.xp)>=GUN_RANK[w],skinOK=i=>rankOf(PRO.xp)>=SKIN_RANK[i];
-const lab=()=>{$('lv').textContent='MODE: '+['TRAINING','STANDARD','RANGE'][lvl];$('lo').textContent='GUN: '+WPN[PRO.lo|0].n;
+const lab=()=>{$('lv').textContent='MODE: '+['TRAINING','STANDARD','RANGE'][lvl];$('lo').textContent='GUN: '+WPN[PRO.lo|0].n;$('pk').textContent='PERK: '+PERK[PRO.pk|0].n;
  bFa.textContent='AUTO-FIRE: '+(af?'ON':'OFF');bGy.textContent='GYRO: '+GYL[gyS];bQl.textContent='QUALITY: '+QS[ql].n;bLs.textContent='LOOK: '+SENSL[sens];bIv.textContent='INVERT Y: '+(inv?'ON':'OFF');
  bSk.textContent='SHAKE: '+(shake?'ON':'OFF');bFp.textContent='FPS: '+(showF?'ON':'OFF');bSn.textContent='FINISH: '+SKINS[PRO.skin|0].n;bTu.textContent=PRO.tut?'REPLAY TUTORIAL':'TUTORIAL: NEXT MATCH';fpsEl.style.display=showF?'block':'none'};
 const sv=()=>{try{localStorage.vz=JSON.stringify({v:6,af,gyS,ql,lvl,showF,sens,shake,inv})}catch(e){}};
-function applyQ(){const q=QS[ql],hi=Math.min(window.devicePixelRatio||1,q.hi);pr=Math.min(q.st,hi);ceil=9;good=0;R.setPixelRatio(pr);size()}
+function applyQ(){const q=QS[ql],hi=Math.min(window.devicePixelRatio||1,q.hi);pr=Math.min(q.st,hi);ceil=9;good=0;R.setPixelRatio(pr);size();
+ if(!!WORLDM.defines.LOWQ!==(ql==0)){WORLDM.defines=ql==0?{LOWQ:1}:{};WORLDM.needsUpdate=true}
+ WORLDM.uniforms.fn.value=scene.fog.near=q.fn;WORLDM.uniforms.ff.value=scene.fog.far=q.ff;VD=q.vd}
 try{const o=JSON.parse(localStorage.vz||'{}');if(o.af!==undefined)af=o.af;if(o.gyS!==undefined)gyS=o.gyS;if(o.lvl!==undefined)lvl=o.lvl;
  if(o.v>=5){if(o.ql!==undefined)ql=o.ql;showF=o.showF|0;if(o.shake!==undefined)shake=o.shake;if(o.sens!==undefined)sens=o.v===5?o.sens+1:o.sens;inv=o.inv|0}}catch(e){}   // v5 had 3 look speeds; v6 has 5
 if(!gunOK(PRO.lo|0))PRO.lo=0;if(!skinOK(PRO.skin|0))PRO.skin=0;if(PRO.skin)applySkin(PRO.skin);
@@ -1334,6 +1519,7 @@ else{$('hint').textContent='Hold your phone sideways · tip: “Add to Home scre
 $('lv').onclick=()=>{lvl=(lvl+1)%3;lab();sv()};
 $('lo').onclick=()=>{let w=PRO.lo|0;for(let k=0;k<3;k++){w=(w+1)%3;if(gunOK(w))break}PRO.lo=w;savePro();lab();
  if(!gunOK(1))$('hint').textContent='More starting guns unlock at '+RANKN[1]+' and '+RANKN[3];else if(!gunOK(2))$('hint').textContent='LR-7 Marksman unlocks at '+RANKN[3]};
+$('pk').onclick=()=>{PRO.pk=((PRO.pk|0)+1)%PERK.length;savePro();lab();$('hint').textContent=PERK[PRO.pk].n+': '+PERK[PRO.pk].d};
 bFa.onclick=()=>{af^=1;lab();sv()};bGy.onclick=()=>{gyS=(gyS+1)%5;lab();sv()};bQl.onclick=()=>{ql=(ql+1)%3;applyQ();lab();sv()};bFp.onclick=()=>{showF^=1;lab();sv()};
 bLs.onclick=()=>{sens=(sens+1)%SENS.length;lab();sv()};bIv.onclick=()=>{inv^=1;lab();sv()};bSk.onclick=()=>{shake^=1;lab();sv()};
 bSn.onclick=()=>{let i=PRO.skin|0;for(let k=0;k<4;k++){i=(i+1)%4;if(skinOK(i))break}PRO.skin=i;savePro();applySkin(i);lab();
