@@ -135,7 +135,7 @@ body.two #bw{display:flex}
 <script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
 <script>
 /* ===================================================================================================
-   VANTA ZONE 1.5 "GRIT"  (what changed and why: docs/CHANGES_v1.5.md; earlier: CHANGES_v1.0-1.4)
+   VANTA ZONE 1.5.1 "GRIT"  (what changed and why: docs/CHANGES_v1.5.md; earlier: CHANGES_v1.0-1.4)
    1.5 adds: a 40x40 city (4x the area) in five districts with buildings and landmarks, a new city every match,
    the "grit" look (one generated grime texture, half-Lambert light, colour grade, dust haze), perks as the second
    half of your loadout, district names on screen, and view-distance culling so it still runs on a weak phone.
@@ -164,7 +164,8 @@ const mm=$('mini'),m=mm.getContext('2d');
 // Phone/tablet = touch controls, LOW quality, 30 FPS. Laptop/desktop = mouse + keyboard (or a PlayStation/Xbox pad), HIGH quality, 60 FPS.
 // A coarse pointer (a finger) is the reliable signal; screen size alone isn't (big phones, small laptops).
 const TOUCH=matchMedia('(pointer: coarse)').matches||(navigator.maxTouchPoints>0&&!matchMedia('(pointer: fine)').matches);
-const DESK=!TOUCH;document.body.classList.add(TOUCH?'touch':'desk');
+const DESK=!TOUCH;let lookStyle=0;   // phones: 0 = SWIPE look, 1 = STICK look (Settings)
+document.body.classList.add(TOUCH?'touch':'desk');
 addEventListener('error',e=>{const d=document.createElement('div');d.style.cssText='position:fixed;left:0;top:0;right:0;z-index:99;background:#c00;color:#fff;font:11px monospace;padding:4px';d.textContent='ERR: '+e.message+' @'+e.lineno;document.body.appendChild(d)}); // shows any script error on screen
 
 // ============================== 1. MAP ==============================
@@ -1046,9 +1047,9 @@ function flankWarn(f,goal){const gx=goal%MW+.5,gy=(goal/MW|0)+.5,rel=wrapA(Math.
 let TUT=null;
 const TUTS=[
  {t:'Move',d:TOUCH?'Drag your LEFT thumb':'W A S D',ok:s=>s.mv>1.4},
- {t:'Look around',d:TOUCH?'Drag your RIGHT thumb — push further to turn faster':'Move the mouse',ok:s=>s.lk>2.4},
+ {t:'Look around',get d(){return TOUCH?(lookStyle?'Drag your RIGHT thumb — push further to turn faster':'Swipe with your RIGHT thumb'):'Move the mouse'},ok:s=>s.lk>2.4},
  {t:'Shoot',d:TOUCH?'Hold FIRE — or put a 2nd finger on the right side':'Left click',ok:s=>s.sh>=4},
- {t:'Aim down the scope',d:TOUCH?'Hold AIM':'Hold right click',ok:s=>s.ad>.4},
+ {t:'Aim down the scope',d:TOUCH?'Tap AIM (tap again to stop) — you can drag from it to look':'Hold right click',ok:s=>s.ad>.4},
  {t:'Find weapon crates',d:'Sky-blue beams hold a second gun. '+(TOUCH?'SWAP button':'1 / 2 or mouse wheel')+' switches.',ok:s=>s.tt>4},
  {t:'Last one standing wins',d:'Stay inside the violet storm ring — it shrinks and moves.',ok:s=>s.tt>4}];
 function tutStep(){if(!TUT)return;const s=TUTS[TUT.i];$('tuts').textContent='TRAINING '+(TUT.i+1)+'/'+TUTS.length+' · '+s.t.toUpperCase();$('tutm').textContent=s.d}
@@ -1061,6 +1062,7 @@ $('tutx').onclick=()=>tutEnd(true);
 let P,bots=[],time=0,over=true,fps=60,fc=0,ft=0;
 const SL=()=>P.sl[P.cur],WP=()=>WPN[SL().w];
 function reset(gen){
+ clearInput();                                                   // a new match starts clean: no held fire, no sticky scope, no stuck thumbs
  bots.forEach(b=>{scene.remove(b.G);if(b.laser)scene.remove(b.laser)});dying.forEach(d=>scene.remove(d.G));dying.length=0;dgT=0;items.forEach(i=>scene.remove(i.G));bots=[];items=[];
  if(gen){seed=RANGE()?4242:(Math.random()*2147483646|0)+1;genCity(RANGE()?seeded(4242):Math.random);buildArena();drawWC();   // a NEW city every match (the range always gets the same one)
   holeI=0;holeM.count=0}
@@ -1123,7 +1125,7 @@ function cast(x,y,dx,dy){ // 2D wall raycast (DDA) on the tile grid: distance to
   if(cell(mx,my)){RD=side?sdy-ddy:sdx-ddx;RS=side;RX=mx;RY=my;RSX=sx;RSY=sy;return}}
  RD=90}
 function reload(){const s=SL(),w=WPN[s.w];if(P.rel>0||P.sw>0||s.ammo>=w.mag||s.res<=0)return;P.rel=w.rel;snd('reload')}
-function swapTo(i){if(!P.sl[i]||over)return;P.cur=i;P.sw=.35;P.rel=0;P.cd=0;GUNS.forEach((m,w)=>m.visible=w===P.sl[i].w);snd('swap')}
+function swapTo(i){if(!P.sl[i]||over)return;if(aimOn){aimOn=false;held.a=0;ba.classList.remove('on')}P.cur=i;P.sw=.35;P.rel=0;P.cd=0;GUNS.forEach((m,w)=>m.visible=w===P.sl[i].w);snd('swap')}
 function swap(){if(over||paused)return;if(P.near)return take(P.near);if(P.sl[1])swapTo(1-P.cur)}
 function take(it){const w=it.t-3,am=it.am||[WPN[w].mag,WPN[w].res],idx=items.indexOf(it);if(idx<0)return;
  if(!P.sl[1]){P.sl[1]={w,ammo:am[0],res:am[1]};swapTo(1)}
@@ -1174,34 +1176,43 @@ function fire(){
 }
 
 // ============================== 15. INPUT ==============================
-// Left thumb = move stick, right thumb = camera stick (console style), buttons for FIRE / RELOAD / SPRINT / AIM.
+// Left thumb = move stick. Right thumb = LOOK, in one of two styles (⚙ LOOK STYLE):
+//   SWIPE (default): the view follows your finger, like most phone shooters. Precise, instant, no dead zone.
+//   STICK: the 1.4 console-style camera stick (hold it off-centre to keep turning).
+// Dragging a finger that started on FIRE or AIM ALSO turns the view, so you can shoot or scope and aim with one thumb.
+// Buttons: FIRE / RELOAD / SPRINT / AIM (tap = scope on/off, hold = scope while held) / SWAP.
 let fbuf=0,fn=0;                                  // fbuf = fire input buffer, fn = logic step counter
 const ez=(k,dt)=>1-Math.exp(-k*dt);               // frame-rate independent smoothing factor
 const _d=new V3(),_m=new V3(),_e=new V3();        // reused vectors: zero garbage per shot
-const joy={id:null,x:0,y:0,dx:0,dy:0},look={id:null,x0:0,y0:0,dx:0,dy:0,vx:0,vy:0},held={f:0,s:0},keys={};
+const joy={id:null,x:0,y:0,dx:0,dy:0},look={id:null,x0:0,y0:0,lx:0,ly:0,dx:0,dy:0,vx:0,vy:0},held={f:0,s:0},keys={};
+const swp={x:0,y:0,v:0};          // swipe pixels waiting to be turned into rotation (used up every logic step); v = recent swipe speed
 const T=$('touch'),jb=$('jb'),jk=$('jk'),rb=$('rb'),rk=$('rk');
 T.addEventListener('pointerdown',e=>{if(DESK)return;T.setPointerCapture(e.pointerId);
  if(e.clientX<innerWidth*.45&&joy.id===null){joy.id=e.pointerId;joy.x=e.clientX;joy.y=e.clientY;
   jb.style.cssText=`display:block;left:${joy.x-50}px;top:${joy.y-50}px`;jk.style.cssText=`display:block;left:${joy.x-22}px;top:${joy.y-22}px`}
- else if(look.id===null){look.id=e.pointerId;look.x0=e.clientX;look.y0=e.clientY;
-  rb.style.cssText=`display:block;left:${look.x0-50}px;top:${look.y0-50}px`;rk.style.cssText=`display:block;left:${look.x0-22}px;top:${look.y0-22}px`}
+ else if(look.id===null){look.id=e.pointerId;look.x0=look.lx=e.clientX;look.y0=look.ly=e.clientY;
+  if(lookStyle){rb.style.cssText=`display:block;left:${look.x0-50}px;top:${look.y0-50}px`;rk.style.cssText=`display:block;left:${look.x0-22}px;top:${look.y0-22}px`}}
  else if(fid===null){fid=e.pointerId;held.f2=1;fbuf=.12}}); // 2nd finger on the right side = fire (look thumb keeps aiming)
 T.addEventListener('pointermove',e=>{
  if(e.pointerId===joy.id){let dx=e.clientX-joy.x,dy=e.clientY-joy.y;const dd=Math.hypot(dx,dy);
   if(dd>50){joy.x+=dx-dx*50/dd;joy.y+=dy-dy*50/dd;dx*=50/dd;dy*=50/dd;jb.style.left=joy.x-50+'px';jb.style.top=joy.y-50+'px'} // ring follows the thumb
   joy.dx=dx/50;joy.dy=dy/50;jk.style.left=joy.x-22+joy.dx*40+'px';jk.style.top=joy.y-22+joy.dy*40+'px'}
- else if(e.pointerId===look.id){look.dx=Math.max(-1,Math.min(1,(e.clientX-look.x0)/55));look.dy=Math.max(-1,Math.min(1,(e.clientY-look.y0)/55));
+ else if(e.pointerId===look.id){if(!lookStyle){swp.x+=e.clientX-look.lx;swp.y+=e.clientY-look.ly;look.lx=e.clientX;look.ly=e.clientY;return}
+  look.dx=Math.max(-1,Math.min(1,(e.clientX-look.x0)/55));look.dy=Math.max(-1,Math.min(1,(e.clientY-look.y0)/55));
   rk.style.left=look.x0-22+look.dx*40+'px';rk.style.top=look.y0-22+look.dy*40+'px'}});
 const up=e=>{if(e.pointerId===fid){fid=null;held.f2=0}
  if(e.pointerId===joy.id){joy.id=null;joy.dx=joy.dy=0;jb.style.display=jk.style.display='none'}
  if(e.pointerId===look.id){look.id=null;look.dx=look.dy=0;rb.style.display=rk.style.display='none'}};
 T.addEventListener('pointerup',up);T.addEventListener('pointercancel',up);
-function hold(id,k,f){const el=$(id);
- el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('on');if(k)held[k]=1;if(f)f()});
- const off=()=>{el.classList.remove('on');if(k)held[k]=0};el.addEventListener('pointerup',off);el.addEventListener('pointercancel',off)}
-hold('bf','f',()=>{fbuf=.12}); // tapping FIRE is remembered for 0.12s
+function hold(id,k,f,drag){const el=$(id);let lx=0,ly=0,pid=null;
+ el.addEventListener('pointerdown',e=>{e.preventDefault();try{el.setPointerCapture(e.pointerId)}catch(_){}el.classList.add('on');pid=e.pointerId;lx=e.clientX;ly=e.clientY;if(k)held[k]=1;if(f)f()});
+ if(drag)el.addEventListener('pointermove',e=>{if(e.pointerId!==pid)return;swp.x+=e.clientX-lx;swp.y+=e.clientY-ly;lx=e.clientX;ly=e.clientY}); // drag from the button = look
+ const off=e=>{if(e.pointerId!==pid)return;pid=null;el.classList.remove('on');if(k)held[k]=0;if(drag&&drag.up)drag.up()};el.addEventListener('pointerup',off);el.addEventListener('pointercancel',off)}
+hold('bf','f',()=>{fbuf=.12},{}); // tapping FIRE is remembered for 0.12s; drag from it to aim while shooting
 hold('bs','s');hold('br',null,reload);hold('bw',null,()=>swap());
-const ba=document.createElement('div');ba.className='btn';ba.id='ba';ba.textContent='AIM';ba.style.cssText='width:58px;height:58px;right:130px;bottom:100px';document.body.appendChild(ba);hold('ba','a'); // hold to look down the scope
+const ba=document.createElement('div');ba.className='btn';ba.id='ba';ba.textContent='AIM';ba.style.cssText='width:58px;height:58px;right:130px;bottom:100px';document.body.appendChild(ba);
+// AIM: a quick TAP toggles the scope on/off (so your thumb is free to look); HOLDING scopes only while held. Dragging from it looks.
+let aimOn=false,aimT=0;hold('ba','a',()=>{aimT=performance.now()},{up(){const quick=performance.now()-aimT<260;aimOn=quick?!aimOn:false;held.a=aimOn?1:0;ba.classList.toggle('on',aimOn)}});
 let gyY=0,gyP=0,gyN=0;addEventListener('devicemotion',e=>{const r=e.rotationRate;if(!r||r.beta==null)return;gyN++;const an=(screen.orientation&&screen.orientation.angle)||window.orientation||0,sg=(an===270||an===-90)?-1:1;gyY=(r.beta||0)*sg;gyP=(r.gamma||0)*sg}); // landscape: yaw=beta, pitch=gamma
 // KEYBOARD: keys are read by PHYSICAL position (e.code), so W A S D works on any layout (AZERTY too) and Shift doesn't change them.
 const playing=()=>!over&&!paused,shown=id=>getComputedStyle($(id)).display!=='none';
@@ -1213,14 +1224,15 @@ addEventListener('keyup',e=>{keys[e.code]=0;if(e.code==='ShiftLeft'||e.code==='S
 addEventListener('blur',()=>{if(DESK&&playing())pause();else clearInput()});   // alt-tab: pause instead of leaving keys stuck down
 // LAPTOP: mouse look via pointer lock (the cursor is captured while you play; Esc releases it and pauses)
 const LOCKED=()=>document.pointerLockElement===$('view');
-document.addEventListener('mousemove',e=>{if(!LOCKED()||!playing())return;
+const NOLOCK=!Element.prototype.requestPointerLock;               // a browser with no mouse capture at all: hold a mouse button and drag to look
+document.addEventListener('mousemove',e=>{if(!playing()||!(LOCKED()||(NOLOCK&&DESK&&e.buttons)))return;
  if(Math.abs(e.movementX)>350||Math.abs(e.movementY)>350)return;           // some browsers send a huge bogus jump now and then: ignore it
  const k=.0022*SENS[sens]*(P.az>.5?.55:1)*(WP().fov<35&&P.az>.5?.7:1);    // slower while scoped (even slower on the marksman scope)
  P.a+=e.movementX*k;P.pit=Math.max(-.6,Math.min(.6,P.pit-e.movementY*k*(inv?-1:1)))});
-document.addEventListener('mousedown',e=>{if(!DESK||!playing())return;if(!LOCKED()){if(e.target===$('view'))lockMouse();return}   // lost the mouse? one click takes it back
+document.addEventListener('mousedown',e=>{if(!DESK||!playing())return;if(!LOCKED()&&!NOLOCK){if(e.target===$('view')||e.target===$('touch')||e.target===$('clk'))lockMouse();return}   // lost the mouse? one click anywhere on the game takes it back
  if(e.button===0){held.f=1;fbuf=.12}if(e.button===2)held.a=1});
 document.addEventListener('mouseup',e=>{if(e.button===0)held.f=0;if(e.button===2)held.a=0});
-let wheelT=0;addEventListener('wheel',e=>{if(!playing()||!LOCKED())return;const n=performance.now();if(n-wheelT<180)return;wheelT=n;swap()},{passive:true});
+let wheelT=0;addEventListener('wheel',e=>{if(!playing()||!(LOCKED()||NOLOCK))return;const n=performance.now();if(n-wheelT<180)return;wheelT=n;swap()},{passive:true});
 document.addEventListener('contextmenu',e=>e.preventDefault());
 document.addEventListener('pointerlockchange',()=>{if(DESK&&!LOCKED()&&playing())pause()});
 const lockMouse=()=>{if(!DESK)return;const v=$('view'),plain=()=>{try{const r=v.requestPointerLock();if(r&&r.catch)r.catch(()=>{})}catch(e){}};
@@ -1264,8 +1276,14 @@ function update(dt){
   P.tgPrev=tgt;P.tgBear=tgt?Math.atan2(tgt.y-P.y,tgt.x-P.x):0;
   P.tg=tgt;
   if(tgt){slow*=STD()?.55:.4;if(af&&Math.abs(tda)<(STD()?.035:.05)&&td<(STD()?8:12))aim=true; // auto-fire: target dead-centre (range-capped in Standard)
-   if((look.id!==null||held.f||held.f2||pad.f)&&!(DESK&&!pad.on)){P.a+=tda*dt*(STD()?2.2:4)*(1-Math.min(1,Math.abs(look.dx)));P.pit+=(Math.atan2(.45-.6,td)-P.pit)*dt*2}}}
+   if((look.id!==null||held.f||held.f2||pad.f)&&!(DESK&&!pad.on)){P.a+=tda*dt*(STD()?2.2:4)*(1-Math.min(1,Math.abs(look.dx)))*(1-Math.min(1,swp.v/12));P.pit+=(Math.atan2(.45-.6,td)-P.pit)*dt*2}}}   // (the gentle pull backs off while you're swiping)
+ if(aimOn&&(held.s||pad.s)&&P.spd>1){aimOn=false;held.a=0;ba.classList.remove('on')}   // sprinting drops a tapped-on scope
  slow*=SENS[sens];                                // LOOK option: sensitivity
+ // SWIPE LOOK: finger pixels -> rotation, ~0.33° per pixel at LOOK: MED. Slower while scoped (slower again on the LR-7), and the
+ // same aim friction as the stick near a target. Applied here, once per logic step, so it can't fight the aim assist.
+ if(swp.x||swp.y){const k=.0058*slow*(WP().fov<35&&P.az>.5?.7:1)*(held.f||held.f2?1/.7:1);   // (firing doesn't slow a swipe: your thumb already sets the speed)
+  P.a+=swp.x*k;P.pit=Math.max(-.6,Math.min(.6,P.pit-swp.y*k*.85*(inv?-1:1)));swp.v=Math.max(swp.v,Math.hypot(swp.x,swp.y));swp.x=swp.y=0}
+ swp.v*=.8;
  // TURN BOOST: hold the look stick at the very edge and turning speeds up after a moment, so 180° turns are quick
  // while small movements near the centre stay precise.
  P.edgeT=Math.abs(look.dx+pad.lx)>.92?P.edgeT+dt:0;const boost=1+Math.min(1,Math.max(0,P.edgeT-.15)/.35)*.9;
@@ -1388,7 +1406,7 @@ function update(dt){
  const sl=SL(),w=WP();sT(H.am,P.rel>0?'···':P.sw>0?'—':sl.ammo);sT(H.rs,sl.res);sT(H.wn,w.full);
  sT(H.sl1,'1 '+WPN[P.sl[0].w].n);sT(H.sl2,P.sl[1]?'2 '+WPN[P.sl[1].w].n:P.near?'F: TAKE '+WPN[P.near.t-3].n:'2 —');sC(H.sl1,'on',P.cur==0);sC(H.sl2,'on',P.cur==1||!!P.near);
  sC(document.body,'two',!!(P.sl[1]||P.near));sT(H.bw,P.near?'TAKE':'SWAP');
- sO(H.out,P.outT>0?'1':'0');H.clk.style.display=DESK&&!LOCKED()&&!over&&!paused?'block':'none';
+ sO(H.out,P.outT>0?'1':'0');H.clk.style.display=DESK&&!NOLOCK&&!LOCKED()&&!over&&!paused?'block':'none';
  const deg=((P.a*57.2958+90)%360+360)%360;sT(H.comp,['N','NE','E','SE','S','SW','W','NW'][Math.round(deg/45)%8]+' '+String(Math.round(deg)%360).padStart(3,'0'));
  sO(H.xh,P.az>.5?'0':'1');                    // crosshair hides while looking down the scope
  sO(H.low,P.hp<35?(.3+.3*Math.abs(Math.sin(time*3.6))).toFixed(2):'0');   // red edge pulses when you're low
@@ -1415,7 +1433,7 @@ function draw(dt,al){
  // screen shake: 'trauma' squared feels natural (small bumps barely shake, big hits really do); smooth wobble, not random noise
  const tr=shake?P.tr*P.tr:0,w1=Math.sin(time*53),w2=Math.sin(time*41+1.7),w3=Math.sin(time*37+4.1);
  cam.position.set(lp(P.px,P.x,al)+w1*.012*tr,.6+bob*.012+w2*.01*tr,lp(P.py,P.y,al)+w3*.012*tr);
- cam.rotation.set(lp(P.pp,P.pit,al)+w2*.012*tr,-lp(P.pa,P.a,al)-Math.PI/2+w1*.015*tr,w3*.02*tr);VM.visible=true;
+ cam.rotation.set(P.pit+w2*.012*tr,-P.a-Math.PI/2+w1*.015*tr,w3*.02*tr);VM.visible=true;   // view angle is NOT blended between steps: mouse/swipe show up on the very next frame
  for(const b of bots)if(b.hp>0){b.G.position.x=lp(b.px,b.x,al);b.G.position.z=lp(b.py,b.y,al)}
  const fv=72-(72-WP().fov)*P.az;if(Math.abs(cam.fov-fv)>.05){cam.fov=fv;cam.updateProjectionMatrix()}
  // gun pose: sprinting tilts it down and across, reloading tips it, AIM brings the scope to your eye
@@ -1489,39 +1507,42 @@ $('quit').onclick=()=>{over=true;paused=0;unlock();$('out').style.opacity=0;$('l
 $('cog').onclick=()=>{$('start').style.display='none';$('settings').style.display='flex'};
 $('sback').onclick=()=>{$('settings').style.display='none';$('start').style.display='flex'};
 // Pause when you leave the app: stops the match, mutes sound, releases any stuck thumbs.
-function clearInput(){joy.id=look.id=fid=null;joy.dx=joy.dy=look.dx=look.dy=look.vx=look.vy=0;held.f=held.s=held.a=held.f2=0;fbuf=0;
+function clearInput(){joy.id=look.id=fid=null;joy.dx=joy.dy=look.dx=look.dy=look.vx=look.vy=0;held.f=held.s=held.a=held.f2=0;fbuf=0;swp.x=swp.y=swp.v=0;aimOn=false;
  [jb,jk,rb,rk].forEach(e=>e.style.display='none');document.querySelectorAll('.btn.on').forEach(e=>e.classList.remove('on'));for(const k in keys)keys[k]=0}
 function pause(){if(over||paused)return;paused=1;clearInput();unlock();   // always release the mouse, or the pause buttons can't be clicked
  $('pause').style.display='flex';document.body.classList.add('menu');$('tut').style.display='none';try{AC&&AC.suspend()}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+addEventListener('orientationchange',()=>{if(TOUCH&&innerHeight>innerWidth)pause()});   // turned the phone upright mid-match: pause (the ROTATE screen covers the game)
+matchMedia('(orientation: portrait)').addEventListener&&matchMedia('(orientation: portrait)').addEventListener('change',e=>{if(e.matches&&TOUCH)pause()});
 $('bp').addEventListener('pointerdown',e=>{e.preventDefault();pause()});   // on-screen pause button
 $('resume').onclick=()=>{lockMouse();paused=0;$('pause').style.display='none';document.body.classList.remove('menu');if(TUT)$('tut').style.display='flex';ac();acc=0;fc=ft=0;last=performance.now()};
 // SETTINGS (saved on the device). Kept off the main menu so the first screen is just: rank, DEPLOY, mode, gun, daily challenge.
 const opts=$('opts'),mkb=id=>{const b=document.createElement('button');b.className='go sm';b.id=id;opts.appendChild(b);return b};
-const bFa=mkb('fa'),bGy=mkb('gy'),bQl=mkb('ql'),bLs=mkb('ls'),bIv=mkb('iv'),bSk=mkb('sk'),bFp=mkb('fp'),bSn=mkb('sn'),bTu=mkb('tu'),GYL=['OFF','ON','YAW FLIP','PITCH FLIP','BOTH FLIP'];
+const bFa=mkb('fa'),bGy=mkb('gy'),bQl=mkb('ql'),bLs=mkb('ls'),bIv=mkb('iv'),bSk=mkb('sk'),bLk=mkb('lk'),bFp=mkb('fp'),bSn=mkb('sn'),bTu=mkb('tu'),GYL=['OFF','ON','YAW FLIP','PITCH FLIP','BOTH FLIP'];
 const fpsEl=document.createElement('div');fpsEl.className='pill';fpsEl.style.cssText='position:absolute;left:12px;top:114px;font-size:11px;display:none';$('hud').appendChild(fpsEl);
 const gunOK=w=>rankOf(PRO.xp)>=GUN_RANK[w],skinOK=i=>rankOf(PRO.xp)>=SKIN_RANK[i];
 const lab=()=>{$('lv').textContent='MODE: '+['TRAINING','STANDARD','RANGE'][lvl];$('lo').textContent='GUN: '+WPN[PRO.lo|0].n;$('pk').textContent='PERK: '+PERK[PRO.pk|0].n;
- bFa.textContent='AUTO-FIRE: '+(af?'ON':'OFF');bGy.textContent='GYRO: '+GYL[gyS];bQl.textContent='QUALITY: '+QS[ql].n;bLs.textContent='LOOK: '+SENSL[sens];bIv.textContent='INVERT Y: '+(inv?'ON':'OFF');
+ bFa.textContent='AUTO-FIRE: '+(af?'ON':'OFF');bGy.textContent='GYRO: '+GYL[gyS];bQl.textContent='QUALITY: '+QS[ql].n;bLs.textContent='LOOK: '+SENSL[sens];bIv.textContent='INVERT Y: '+(inv?'ON':'OFF');bLk.textContent='LOOK STYLE: '+(lookStyle?'STICK':'SWIPE');
  bSk.textContent='SHAKE: '+(shake?'ON':'OFF');bFp.textContent='FPS: '+(showF?'ON':'OFF');bSn.textContent='FINISH: '+SKINS[PRO.skin|0].n;bTu.textContent=PRO.tut?'REPLAY TUTORIAL':'TUTORIAL: NEXT MATCH';fpsEl.style.display=showF?'block':'none'};
-const sv=()=>{try{localStorage.vz=JSON.stringify({v:6,af,gyS,ql,lvl,showF,sens,shake,inv})}catch(e){}};
+const sv=()=>{try{localStorage.vz=JSON.stringify({v:6,af,gyS,ql,lvl,showF,sens,shake,inv,lk:lookStyle})}catch(e){}};
 function applyQ(){const q=QS[ql],hi=Math.min(window.devicePixelRatio||1,q.hi);pr=Math.min(q.st,hi);ceil=9;good=0;R.setPixelRatio(pr);size();
  if(!!WORLDM.defines.LOWQ!==(ql==0)){WORLDM.defines=ql==0?{LOWQ:1}:{};WORLDM.needsUpdate=true}
  WORLDM.uniforms.fn.value=scene.fog.near=q.fn;WORLDM.uniforms.ff.value=scene.fog.far=q.ff;VD=q.vd}
 try{const o=JSON.parse(localStorage.vz||'{}');if(o.af!==undefined)af=o.af;if(o.gyS!==undefined)gyS=o.gyS;if(o.lvl!==undefined)lvl=o.lvl;
+ lookStyle=o.lk|0;
  if(o.v>=5){if(o.ql!==undefined)ql=o.ql;showF=o.showF|0;if(o.shake!==undefined)shake=o.shake;if(o.sens!==undefined)sens=o.v===5?o.sens+1:o.sens;inv=o.inv|0}}catch(e){}   // v5 had 3 look speeds; v6 has 5
 if(!gunOK(PRO.lo|0))PRO.lo=0;if(!skinOK(PRO.skin|0))PRO.skin=0;if(PRO.skin)applySkin(PRO.skin);
-if(DESK){bGy.style.display='none';                 // no gyro on laptops
+if(DESK){bGy.style.display='none';bLk.style.display='none';   // no gyro or touch look on laptops
  $('hint').textContent='Click DEPLOY or press Enter · Esc pauses';
  $('ctl').innerHTML='W A S D move · Mouse look · Left click fire · Right click scope · Shift sprint · R reload<br>1 / 2 or mouse wheel swap guns · F take a gun from a crate · Esc or P pause<br>PlayStation / Xbox pad: sticks · R2 fire · L2 scope · L3 sprint · Square/X reload · Triangle/Y swap'}
 else{$('hint').textContent='Hold your phone sideways · tip: “Add to Home screen” for true full screen';
- $('ctl').innerHTML='Left thumb moves · right thumb looks (push further = faster) · hold FIRE (or a 2nd finger on the right) · hold AIM to scope<br>SWAP switches guns, or TAKES one you are standing on · AUTO-FIRE shoots when your crosshair is on someone'}
+ $('ctl').innerHTML='Left thumb moves · right thumb looks (swipe, or a stick: LOOK STYLE) · hold FIRE (or a 2nd finger on the right) · tap AIM to scope<br>Drag from FIRE or AIM to aim while you use them · SWAP switches guns, or TAKES one you are standing on · AUTO-FIRE shoots when your crosshair is on someone'}
 $('lv').onclick=()=>{lvl=(lvl+1)%3;lab();sv()};
 $('lo').onclick=()=>{let w=PRO.lo|0;for(let k=0;k<3;k++){w=(w+1)%3;if(gunOK(w))break}PRO.lo=w;savePro();lab();
  if(!gunOK(1))$('hint').textContent='More starting guns unlock at '+RANKN[1]+' and '+RANKN[3];else if(!gunOK(2))$('hint').textContent='LR-7 Marksman unlocks at '+RANKN[3]};
 $('pk').onclick=()=>{PRO.pk=((PRO.pk|0)+1)%PERK.length;savePro();lab();$('hint').textContent=PERK[PRO.pk].n+': '+PERK[PRO.pk].d};
 bFa.onclick=()=>{af^=1;lab();sv()};bGy.onclick=()=>{gyS=(gyS+1)%5;lab();sv()};bQl.onclick=()=>{ql=(ql+1)%3;applyQ();lab();sv()};bFp.onclick=()=>{showF^=1;lab();sv()};
-bLs.onclick=()=>{sens=(sens+1)%SENS.length;lab();sv()};bIv.onclick=()=>{inv^=1;lab();sv()};bSk.onclick=()=>{shake^=1;lab();sv()};
+bLs.onclick=()=>{sens=(sens+1)%SENS.length;lab();sv()};bLk.onclick=()=>{lookStyle^=1;lab();sv()};bIv.onclick=()=>{inv^=1;lab();sv()};bSk.onclick=()=>{shake^=1;lab();sv()};
 bSn.onclick=()=>{let i=PRO.skin|0;for(let k=0;k<4;k++){i=(i+1)%4;if(skinOK(i))break}PRO.skin=i;savePro();applySkin(i);lab();
  if(!skinOK(1))bSn.textContent='FINISH: MINT · more at '+RANKN[4]};
 bTu.onclick=()=>{PRO.tut=0;savePro();lab()};

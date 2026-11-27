@@ -1,3 +1,45 @@
+# 1.5.1: aiming and looking fixed
+
+**The bug:** aiming and looking around didn't work properly.
+- **Phone:** the AIM, FIRE, RELOAD, SPRINT and SWAP buttons sit exactly where your right thumb rests to look. A touch
+  there pressed a button instead of turning the view. And holding AIM used the same thumb you look with, so you could
+  scope or look, but not both.
+- **Laptop:** if the game lost the mouse (Esc, alt-tab, or the browser refusing to re-capture it for about 1 s after
+  Esc), it showed CLICK TO AIM, but clicking did nothing. The click landed on the invisible touch layer that sits on
+  top of the game, not on the game itself. So you couldn't look around until you paused and resumed.
+
+**Fixes**
+- **Swipe look (new default on phones):** the view follows your finger 1:1, like most phone shooters. A 300 px swipe
+  is about 100°. No dead zone and no ramp-up. It's slower while scoped (slower again on the LR-7), and the aim assist's
+  gentle pull backs off while you swipe so it never fights you. The 1.4 camera stick is still in ⚙ as
+  **LOOK STYLE: STICK**.
+- **Drag from FIRE or AIM to look:** a thumb that starts on FIRE keeps shooting while you drag it to track a target.
+  The same works from AIM.
+- **AIM taps on and off:** tap to scope, tap again to stop, so your thumb is free to look. Holding still scopes only
+  while held. Sprinting or switching guns drops the scope.
+- **Laptop:** one click anywhere on the game takes the mouse back.
+- **Laptop, browsers with no mouse capture at all:** hold a mouse button and drag to look.
+- **The view responds a frame sooner.** Your view angle is no longer blended between logic steps, so mouse and swipe
+  movement show on the very next frame. Position is still blended, so movement stays smooth.
+
+**Other edge cases fixed**
+- A new match starts with input cleared. A FIRE button held when the last match ended, a scope left on, or a stuck
+  thumb no longer carry over.
+- Turning the phone upright mid-match pauses the game (the ROTATE screen used to cover a match that kept running).
+- Tutorial text matches your look style and the new AIM tap.
+
+**Tested** (real WebGL, emulated phone with real touch events, and laptop):
+- a 300 px swipe turns 1.74 rad and back, and turns half as far while scoped
+- tapping AIM toggles the scope on and off
+- dragging from FIRE turned the view while firing 9 shots
+- the stick style still turns
+- move + look + scope with three fingers at once
+- a new match clears the scope
+- portrait pauses
+- laptop: the click recaptures the mouse, mouse look and right-click scope work
+- the full 1.5 regression passed, with phone FPS unchanged (27.8 average)
+- 0 script errors
+
 # VANTA ZONE 1.5 "GRIT": a city you can get lost in
 
 1.4 gave you reasons to come back. 1.5 gives you somewhere worth coming back to: a map four times bigger, with

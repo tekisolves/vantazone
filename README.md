@@ -9,7 +9,7 @@ A landscape, last-one-standing first-person shooter that runs in a phone browser
 
 On Android, use **Add to Home screen** in the browser menu: it then opens full screen in landscape like an app, and works offline after the first visit. You can also open `index.html` from a local web server.
 
-**Phone:** left thumb moves · right thumb turns/looks (push further = faster) · FIRE · AIM (scope) · SPRINT · RELOAD · SWAP (or TAKE a gun from a crate) · II pauses.
+**Phone:** left thumb moves · right thumb swipes to look (or a stick: ⚙ LOOK STYLE) · FIRE · AIM (tap = scope on/off) · drag from FIRE or AIM to aim while using them · SPRINT · RELOAD · SWAP (or TAKE a gun from a crate) · II pauses.
 
 **Laptop:** WASD · mouse look · left click fire · right click scope · Shift sprint · R reload · 1 / 2 / wheel swap · F take a gun · Esc or P pause · Enter deploys.
 
@@ -35,6 +35,7 @@ Clear, simplified shapes and colours (like Fortnite or Valorant), with the grit 
 Scenery is a few chunk meshes with light baked in (the outside world built once, the city rebuilt per match behind the fade), skipped when off-screen or past the haze (thicker on LOW) · all shadows in one mesh · each enemy is 7 meshes · bullet holes, sparks, dust and shell casings are one draw call each · no real-time shadows · 30 FPS cap with auto resolution · fixed 1/60 s game logic · nothing allocated per frame. Turn on `FPS: ON` in ⚙ Settings to measure.
 
 ## Changelog
+- [1.5.1](docs/CHANGES_v1.5.md) — swipe look on phones (default), drag from FIRE/AIM to look, AIM taps on/off, laptop click-to-recapture fixed, clean input between matches, pause on portrait
 - [1.5](docs/CHANGES_v1.5.md) — "Grit": 40x40 city in five districts with buildings and landmarks, new every match, stylised-grit look (grime texture, half-Lambert, grade, haze), perks, district names, more enemies/loot, chunked view-distance culling
 - [1.4](docs/CHANGES_v1.4.md) — new arena every match, moving storm, 3 guns + weapon crates, ranks/XP/unlocks, daily challenge, records, tutorial, simpler menu, enemy callouts, bullet holes/casings/storm wall/ground graphics, laptop control fixes, install-to-home-screen + offline, bundled three.js
 - [1.3](docs/CHANGES_v1.3.md) — enemy brain: patrol, hunt last known position, cover and peek, flanking, hearing, fair spawns, SPOTTED callouts
